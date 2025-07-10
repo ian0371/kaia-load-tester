@@ -5,7 +5,7 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/kaiachain/kaia/client"
+	"github.com/kaiachain/kaia-load-tester/klayslave/client"
 	"github.com/kaiachain/kaia/common"
 )
 

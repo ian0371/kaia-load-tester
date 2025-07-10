@@ -13,7 +13,7 @@ import (
 	"github.com/kaiachain/kaia/accounts/abi/bind"
 	"github.com/kaiachain/kaia/blockchain"
 	"github.com/kaiachain/kaia/blockchain/types"
-	"github.com/kaiachain/kaia/client"
+	"github.com/kaiachain/kaia-load-tester/klayslave/client"
 	"github.com/kaiachain/kaia/common"
 	"github.com/myzhan/boomer"
 )

@@ -14,7 +14,7 @@ import (
 	"github.com/kaiachain/kaia-load-tester/klayslave/clipool"
 	"github.com/kaiachain/kaia-load-tester/testcase/ethereumTxLegacyTC"
 	"github.com/kaiachain/kaia/blockchain/types"
-	"github.com/kaiachain/kaia/client"
+	"github.com/kaiachain/kaia-load-tester/klayslave/client"
 	"github.com/kaiachain/kaia/common"
 	"github.com/kaiachain/kaia/common/hexutil"
 	"github.com/myzhan/boomer"

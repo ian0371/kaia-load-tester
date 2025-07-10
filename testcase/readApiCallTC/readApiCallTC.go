@@ -13,7 +13,7 @@ import (
 
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
 	"github.com/kaiachain/kaia-load-tester/klayslave/clipool"
-	"github.com/kaiachain/kaia/client"
+	"github.com/kaiachain/kaia-load-tester/klayslave/client"
 	"github.com/kaiachain/kaia/networks/rpc"
 	"github.com/myzhan/boomer"
 	"github.com/tidwall/gjson"

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kaiachain/kaia-load-tester/klayslave/client"
 	"github.com/kaiachain/kaia/accounts/abi"
 	"github.com/kaiachain/kaia/blockchain"
 	"github.com/kaiachain/kaia/blockchain/types"
-	"github.com/kaiachain/kaia/client"
 	"github.com/kaiachain/kaia/common"
 )
 

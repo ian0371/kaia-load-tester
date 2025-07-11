@@ -613,7 +613,7 @@ func (ec *Client) ChainID(ctx context.Context) (*big.Int, error) {
 	}
 
 	var result hexutil.Big
-	err := ec.c.CallContext(ctx, &result, "eth_chainID")
+	err := ec.c.CallContext(ctx, &result, "eth_chainId")
 	if err == nil {
 		ec.chainID = (*big.Int)(&result)
 	}

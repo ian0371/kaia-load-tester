@@ -31,7 +31,6 @@ import (
 	"github.com/kaiachain/kaia-load-tester/testcase/storageTrieWriteTC"
 	"github.com/kaiachain/kaia/accounts/abi/bind"
 	"github.com/kaiachain/kaia/api/debug"
-	"github.com/kaiachain/kaia/common"
 	"github.com/kaiachain/kaia/console"
 	"github.com/myzhan/boomer"
 	"github.com/urfave/cli"
@@ -53,7 +52,7 @@ func init() {
 	//		app.CommandNotFound = nodecmd.CommandNotExist
 	// app.OnUsageError = nodecmd.OnUsageError
 	app.Before = func(cli *cli.Context) error {
-		//runtime.GOMAXPROCS(runtime.NumCPU())
+		// runtime.GOMAXPROCS(runtime.NumCPU())
 		if runtime.GOOS == "darwin" {
 			return nil
 		}
@@ -152,14 +151,6 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 	// Wait, charge KAIA happen in 100% of all created test accounts
 	// But, from here including prepareTestContracts like MintERC721, only 20% of account happens
 	accGrp.SetAccGrpByActivePercent(cfg.GetActiveUserPercent())
-
-	// 4. Deploy the test contracts which will be used in various TCs. If needed, charge tokens to test accounts.
-	// Register the addresses of Contracts that will not be deployed with DeployTestContracts.
-	skipDeploys := map[account.TestContract]common.Address{
-		account.ContractGaslessToken:      common.HexToAddress(cfg.GetTestTokenAddress()),
-		account.ContractGaslessSwapRouter: common.HexToAddress(cfg.GetGsrAddress()),
-	}
-	accGrp.DeployTestContracts(cfg.GetTcStrList(), globalReservoirAccount, localReservoirAccount, cfg.GetGCli(), cfg.GetChargeValue(), skipDeploys)
 
 	// Set SmartContractAddress value in each packages if needed
 	setSmartContractAddressPerPackage(accGrp)

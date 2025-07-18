@@ -15,10 +15,10 @@ import (
 
 	kaia "github.com/kaiachain/kaia"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
+	"github.com/kaiachain/kaia-load-tester/klayslave/client"
 	"github.com/kaiachain/kaia-load-tester/klayslave/clipool"
 	"github.com/kaiachain/kaia/accounts/abi"
 	"github.com/kaiachain/kaia/blockchain/types"
-	"github.com/kaiachain/kaia-load-tester/klayslave/client"
 	"github.com/kaiachain/kaia/common"
 	"github.com/kaiachain/kaia/common/hexutil"
 	"github.com/myzhan/boomer"
@@ -189,7 +189,7 @@ func CreateRandomArguments(addr common.Address) (*account.Account, *big.Int, str
 	// randomLegacyReqType == 0 : Value transfer
 	// randomLegacyReqType == 1 : Smart contract deployment
 	// randomLegacyReqType == 2 : Smart contract execution
-	randomLegacyReqType := rand.Int() % 3
+	randomLegacyReqType := 0
 
 	var to *account.Account
 	var value *big.Int

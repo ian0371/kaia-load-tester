@@ -1812,7 +1812,7 @@ func (self *Account) TransferNewLegacyTxWithEthBatch(c *client.Client, endpoint 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
-	batchSize := 20
+	batchSize := 100
 	var toAddress common.Address
 	if to == nil {
 		toAddress = common.Address{}

@@ -8,8 +8,6 @@ import (
 	"log"
 	"math/big"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -43,8 +41,6 @@ var (
 	toAccount     *account.Account
 	prevBalanceTo *big.Int
 
-	executablePath string
-
 	maxRetryCount int
 
 	SmartContractAccount *account.Account
@@ -71,17 +67,6 @@ func Init(accs []*account.Account, endpoint string, gp *big.Int) {
 	}
 
 	nAcc = len(accGrp)
-
-	// Path to executable file that generates ethereum tx.
-	ex, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	exPath := filepath.Dir(ex)
-	fmt.Println("exPath: ", exPath)
-
-	executablePath = exPath + "/ethTxGenerator"
-	log.Println("executablePath: ", executablePath)
 
 	// Retry to get transaction receipt in checkResult
 	maxRetryCount = 30

@@ -38,8 +38,6 @@ import (
 	"github.com/kaiachain/kaia/rlp"
 )
 
-// TODO-Kaia Needs to separate APIs along with each namespaces.
-
 // Client defines typed wrappers for the Kaia RPC API.
 type Client struct {
 	c       *rpc.Client
@@ -486,6 +484,26 @@ func (ec *Client) SendTransaction(ctx context.Context, tx *types.Transaction) er
 	//	return err
 	//}
 	//return ec.c.CallContext(ctx, nil, "eth_sendRawTransaction", common.ToHex(data))
+}
+
+// SendTransactionBatch injects a signed transaction into the pending pool for execution.
+//
+// If the transaction was a contract creation use the TransactionReceipt method to get the
+// contract address after the transaction has been mined.
+func (ec *Client) SendTransactionBatch(ctx context.Context, txs []*types.Transaction) error {
+	batch := make([]rpc.BatchElem, len(txs))
+	for i, tx := range txs {
+		data, err := rlp.EncodeToBytes(tx)
+		if err != nil {
+			return err
+		}
+		batch[i] = rpc.BatchElem{
+			Method: "eth_sendRawTransaction",
+			Args:   []interface{}{hexutil.Encode(data)},
+			Result: new(hexutil.Bytes),
+		}
+	}
+	return ec.c.BatchCallContext(ctx, batch)
 }
 
 // SendRawTransaction injects a signed transaction into the pending pool for execution.

@@ -89,7 +89,7 @@ func GetAccountFromKey(id int, key string) *Account {
 		0,
 		big.NewInt(0),
 		sync.Mutex{},
-		//make(TransactionMap),
+		// make(TransactionMap),
 	}
 
 	return &tAcc
@@ -145,14 +145,13 @@ func NewAccount(id int) *Account {
 		0,
 		big.NewInt(0),
 		sync.Mutex{},
-		//make(TransactionMap),
+		// make(TransactionMap),
 	}
 
 	return &tAcc
 }
 
 func NewAccountOnNode(id int, endpoint string) *Account {
-
 	tAcc := NewAccount(id)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -165,12 +164,12 @@ func NewAccountOnNode(id int, endpoint string) *Account {
 
 	addr, err := c.ImportRawKey(ctx, tAcc.key[0], "")
 	if err != nil {
-		//log.Printf("Account(%v) : Failed to import\n", tAcc.address, err)
+		// log.Printf("Account(%v) : Failed to import\n", tAcc.address, err)
 	} else {
 		if tAcc.address != addr {
 			log.Fatalf("origial:%v, imported: %v\n", tAcc.address, addr.String())
 		}
-		//log.Printf("origial:%v, imported:%v\n", tAcc.address, addr.String())
+		// log.Printf("origial:%v, imported:%v\n", tAcc.address, addr.String())
 	}
 
 	_, err = c.UnlockAccount(ctx, tAcc.GetAddress(), "", 0)
@@ -178,7 +177,7 @@ func NewAccountOnNode(id int, endpoint string) *Account {
 		log.Printf("Account(%v) : Failed to Unlock: %v\n", tAcc.GetAddress().String(), err)
 	}
 
-	//log.Printf("Wallet UnLock Result: %v", flag)
+	// log.Printf("Wallet UnLock Result: %v", flag)
 
 	return tAcc
 }
@@ -201,7 +200,7 @@ func NewKaiaAccount(id int) *Account {
 		0,
 		big.NewInt(0),
 		sync.Mutex{},
-		//make(TransactionMap),
+		// make(TransactionMap),
 	}
 
 	return &tAcc
@@ -223,7 +222,7 @@ func NewKaiaAccountWithAddr(id int, addr common.Address) *Account {
 		0,
 		big.NewInt(0),
 		sync.Mutex{},
-		//make(TransactionMap),
+		// make(TransactionMap),
 	}
 
 	return &tAcc
@@ -255,7 +254,7 @@ func NewKaiaMultisigAccount(id int) *Account {
 		0,
 		big.NewInt(0),
 		sync.Mutex{},
-		//make(TransactionMap),
+		// make(TransactionMap),
 	}
 
 	return &tAcc
@@ -296,7 +295,7 @@ func (acc *Account) GetNonce(c *client.Client) uint64 {
 	}
 	acc.nonce = nonce
 
-	//fmt.Printf("account= %v  nonce = %v\n", acc.GetAddress().String(), nonce)
+	// fmt.Printf("account= %v  nonce = %v\n", acc.GetAddress().String(), nonce)
 	return acc.nonce
 }
 
@@ -351,7 +350,7 @@ func (self *Account) TransferSignedTxWithGuaranteeRetry(c *client.Client, to *Ac
 		}
 		log.Printf("Failed to execute: err=%s", err.Error())
 		time.Sleep(1 * time.Second) // Mostly, the err is `txpool is full`, retry after a while.
-		//numChargedAcc, lastFailedNum = estimateRemainingTime(accGrp, numChargedAcc, lastFailedNum)
+		// numChargedAcc, lastFailedNum = estimateRemainingTime(accGrp, numChargedAcc, lastFailedNum)
 	}
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
@@ -379,7 +378,7 @@ func (self *Account) TransferSignedTxReturnTx(withLock bool, c *client.Client, t
 
 	nonce := self.GetNonce(c)
 
-	//fmt.Printf("account=%v, nonce = %v\n", self.GetAddress().String(), nonce)
+	// fmt.Printf("account=%v, nonce = %v\n", self.GetAddress().String(), nonce)
 
 	tx := types.NewTransaction(
 		nonce,
@@ -411,13 +410,13 @@ func (self *Account) TransferSignedTxReturnTx(withLock bool, c *client.Client, t
 
 	self.nonce++
 
-	//fmt.Printf("%v transferSignedTx %v klay to %v klay.\n", self.GetAddress().Hex(), to.GetAddress().Hex(), value)
+	// fmt.Printf("%v transferSignedTx %v klay to %v klay.\n", self.GetAddress().Hex(), to.GetAddress().Hex(), value)
 
 	return signTx, gasPrice, nil
 }
 
 func (self *Account) TransferNewValueTransferWithCancelTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -482,7 +481,7 @@ func (self *Account) TransferNewValueTransferWithCancelTx(c *client.Client, to *
 }
 
 func (self *Account) TransferNewValueTransferTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -525,7 +524,7 @@ func (self *Account) TransferNewValueTransferTx(c *client.Client, to *Account, v
 }
 
 func (self *Account) TransferNewFeeDelegatedValueTransferTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -574,7 +573,7 @@ func (self *Account) TransferNewFeeDelegatedValueTransferTx(c *client.Client, to
 }
 
 func (self *Account) TransferNewFeeDelegatedValueTransferWithRatioTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -624,7 +623,7 @@ func (self *Account) TransferNewFeeDelegatedValueTransferWithRatioTx(c *client.C
 }
 
 func (self *Account) TransferNewValueTransferMemoTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -675,7 +674,7 @@ func randInt(min int, max int) int {
 // increase memo size from 5 bytes to between 50 bytes and 2,000 bytes
 
 func (self *Account) TransferNewValueTransferBigRandomStringMemoTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 	minBytes := 50
 	maxBytes := 2000
 
@@ -724,7 +723,7 @@ func (self *Account) TransferNewValueTransferBigRandomStringMemoTx(c *client.Cli
 
 // create 200 strings of memo
 func (self *Account) TransferNewValueTransferSmallMemoTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 	length := 200
 
 	self.mutex.Lock()
@@ -772,7 +771,7 @@ func (self *Account) TransferNewValueTransferSmallMemoTx(c *client.Client, to *A
 
 // create 2000 strings of memo
 func (self *Account) TransferNewValueTransferLargeMemoTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 	length := 2000
 
 	self.mutex.Lock()
@@ -819,7 +818,7 @@ func (self *Account) TransferNewValueTransferLargeMemoTx(c *client.Client, to *A
 }
 
 func (self *Account) TransferNewFeeDelegatedValueTransferMemoTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -870,7 +869,7 @@ func (self *Account) TransferNewFeeDelegatedValueTransferMemoTx(c *client.Client
 }
 
 func (self *Account) TransferNewFeeDelegatedValueTransferMemoWithRatioTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -922,7 +921,7 @@ func (self *Account) TransferNewFeeDelegatedValueTransferMemoWithRatioTx(c *clie
 }
 
 func (self *Account) TransferNewAccountCreationTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -967,7 +966,7 @@ func (self *Account) TransferNewAccountCreationTx(c *client.Client, to *Account,
 }
 
 func (self *Account) TransferNewAccountUpdateTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1009,7 +1008,7 @@ func (self *Account) TransferNewAccountUpdateTx(c *client.Client, to *Account, v
 }
 
 func (self *Account) TransferNewFeeDelegatedAccountUpdateTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1057,7 +1056,7 @@ func (self *Account) TransferNewFeeDelegatedAccountUpdateTx(c *client.Client, to
 }
 
 func (self *Account) TransferNewFeeDelegatedAccountUpdateWithRatioTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1106,7 +1105,7 @@ func (self *Account) TransferNewFeeDelegatedAccountUpdateWithRatioTx(c *client.C
 }
 
 func (self *Account) TransferNewSmartContractDeployTx(c *client.Client, to *Account, value *big.Int, data []byte) (common.Address, *types.Transaction, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1153,7 +1152,7 @@ func (self *Account) TransferNewSmartContractDeployTx(c *client.Client, to *Acco
 }
 
 func (self *Account) TransferNewFeeDelegatedSmartContractDeployTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1207,7 +1206,7 @@ func (self *Account) TransferNewFeeDelegatedSmartContractDeployTx(c *client.Clie
 }
 
 func (self *Account) TransferNewFeeDelegatedSmartContractDeployWithRatioTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1272,7 +1271,7 @@ func randomString(n int) string {
 }
 
 func (self *Account) ExecuteStorageTrieStore(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	self.mutex.Lock()
@@ -1332,7 +1331,7 @@ func (self *Account) ExecuteStorageTrieStore(c *client.Client, to *Account, valu
 }
 
 func (self *Account) TransferNewSmartContractExecutionTx(c *client.Client, to *Account, value *big.Int, data []byte) (*types.Transaction, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1376,7 +1375,7 @@ func (self *Account) TransferNewSmartContractExecutionTx(c *client.Client, to *A
 }
 
 func (self *Account) TransferNewFeeDelegatedSmartContractExecutionTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1437,7 +1436,7 @@ func (self *Account) TransferNewFeeDelegatedSmartContractExecutionTx(c *client.C
 }
 
 func (self *Account) TransferNewFeeDelegatedSmartContractExecutionWithRatioTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1499,7 +1498,7 @@ func (self *Account) TransferNewFeeDelegatedSmartContractExecutionWithRatioTx(c 
 }
 
 func (self *Account) TransferNewCancelTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1540,7 +1539,7 @@ func (self *Account) TransferNewCancelTx(c *client.Client, to *Account, value *b
 }
 
 func (self *Account) TransferNewFeeDelegatedCancelTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1587,7 +1586,7 @@ func (self *Account) TransferNewFeeDelegatedCancelTx(c *client.Client, to *Accou
 }
 
 func (self *Account) TransferNewFeeDelegatedCancelWithRatioTx(c *client.Client, to *Account, value *big.Int) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1635,7 +1634,7 @@ func (self *Account) TransferNewFeeDelegatedCancelWithRatioTx(c *client.Client, 
 }
 
 func (self *Account) TransferNewEthereumAccessListTx(c *client.Client, to *Account, value *big.Int, input []byte) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1697,7 +1696,7 @@ func (self *Account) TransferNewEthereumAccessListTx(c *client.Client, to *Accou
 }
 
 func (self *Account) TransferNewEthereumDynamicFeeTx(c *client.Client, to *Account, value *big.Int, input []byte) (common.Hash, *big.Int, error) {
-	ctx := context.Background() //context.WithTimeout(context.Background(), 100*time.Second)
+	ctx := context.Background() // context.WithTimeout(context.Background(), 100*time.Second)
 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
@@ -1812,7 +1811,7 @@ func (self *Account) TransferNewLegacyTxWithEthBatch(c *client.Client, endpoint 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
-	batchSize := 100
+	batchSize := 50
 	var toAddress common.Address
 	if to == nil {
 		toAddress = common.Address{}
@@ -1837,7 +1836,7 @@ func (self *Account) TransferNewLegacyTxWithEthBatch(c *client.Client, endpoint 
 	signer := types.LatestSignerForChainID(chainID)
 
 	var wg sync.WaitGroup
-	var errChan = make(chan error, len(txs))
+	errChan := make(chan error, len(txs))
 
 	for i := range txs {
 		wg.Add(1)
@@ -2109,7 +2108,7 @@ func (self *Account) TransferUnsignedTx(c *client.Client, to *Account, value *bi
 		log.Printf("Account(%v) : Failed to sendTransaction: %v\n", self.address[:5], err)
 		return common.Hash{}, err
 	}
-	//log.Printf("Account(%v) : Success to sendTransaction: %v\n", self.address[:5], hash.String())
+	// log.Printf("Account(%v) : Success to sendTransaction: %v\n", self.address[:5], hash.String())
 	return hash, nil
 }
 

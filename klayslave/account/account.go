@@ -1808,6 +1808,80 @@ func (self *Account) TransferNewLegacyTxWithEth(c *client.Client, endpoint strin
 	return common.HexToHash(strResult), gasPrice, nil
 }
 
+func (self *Account) TransferNewLegacyTxWithEthBatch(c *client.Client, endpoint string, to *Account, value *big.Int, input string) ([]common.Hash, *big.Int, error) {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+
+	var toAddressList []string
+	var valueStrList []string
+	var inputStrList []string
+
+	// Build lists of parameters for batch transactions
+	if to != nil {
+		toAddressList = append(toAddressList, to.GetAddress().String())
+	} else {
+		toAddressList = append(toAddressList, "nil")
+	}
+	valueStrList = append(valueStrList, value.String())
+	inputStrList = append(inputStrList, input)
+
+	txs := make([]*types.Transaction, len(toAddressList))
+	for i := range toAddressList {
+		nonce := self.GetNonce(c)
+		txs[i] = types.NewTransaction(
+			nonce,
+			common.HexToAddress(toAddressList[i]),
+			value,
+			100000,
+			gasPrice,
+			common.FromHex(input),
+		)
+		self.nonce++
+	}
+
+	signer := types.LatestSignerForChainID(chainID)
+
+	var wg sync.WaitGroup
+	var errChan = make(chan error, len(txs))
+
+	for i := range txs {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			if err := txs[idx].SignWithKeys(signer, self.privateKey); err != nil {
+				errChan <- fmt.Errorf("failed to sign tx %d: %v", idx, err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	if err := <-errChan; err != nil {
+		log.Fatalf("Failed to sign transactions: %v", err)
+	}
+
+	ctx := context.Background()
+	err := c.SendTransactionBatch(ctx, txs)
+	if err != nil {
+		if err.Error() == blockchain.ErrNonceTooLow.Error() || err.Error() == blockchain.ErrReplaceUnderpriced.Error() {
+			fmt.Printf("Account(%v) nonce(%v) : Failed to sendTransaction: %v\n", self.GetAddress().String(), self.nonce, err)
+			fmt.Printf("Account(%v) nonce is added to %v\n", self.GetAddress().String(), self.nonce+1)
+			self.nonce++
+		} else {
+			fmt.Printf("Account(%v) nonce(%v) : Failed to sendTransaction: %v\n", self.GetAddress().String(), self.nonce, err)
+		}
+		return nil, gasPrice, err
+	}
+
+	hashes := make([]common.Hash, len(txs))
+	for i := range txs {
+		hashes[i] = txs[i].Hash()
+	}
+
+	return hashes, gasPrice, nil
+}
+
 // This function is responsible for sending both Gasless Approve Transactions and Gasless Swap Transactions.
 func (self *Account) TransferNewGaslessTx(c *client.Client, endpoint string, testToken, gsr *Account) (common.Hash, common.Hash, *big.Int, error) {
 	self.mutex.Lock()

@@ -101,7 +101,7 @@ func Run() {
 
 	start := boomer.Now()
 
-	txHash, _, err := from.TransferNewLegacyTxWithEth(cli, endPoint, to, value, input, executablePath)
+	txHashes, _, err := from.TransferNewLegacyTxWithEthBatch(cli, endPoint, to, value, input)
 
 	elapsed := boomer.Now() - start
 
@@ -112,15 +112,17 @@ func Run() {
 	cliPool.Free(cli)
 
 	// Check test result with CheckResult function
-	go func(transactionHash common.Hash) {
-		ret, err := CheckResult(transactionHash, reqType)
-		if ret == false || err != nil {
-			boomer.Events.Publish("request_failure", "http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-			return
-		}
+	go func(transactionHashes []common.Hash) {
+		for _, txHash := range transactionHashes {
+			ret, err := CheckResult(txHash, reqType)
+			if ret == false || err != nil {
+				boomer.Events.Publish("request_failure", "http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
+				return
+			}
 
-		boomer.Events.Publish("request_success", "http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
-	}(txHash)
+			boomer.Events.Publish("request_success", "http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
+		}
+	}(txHashes)
 }
 
 // CheckResult returns true and nil error, if expected results are observed, otherwise returns false and error.

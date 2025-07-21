@@ -1812,25 +1812,20 @@ func (self *Account) TransferNewLegacyTxWithEthBatch(c *client.Client, endpoint 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
-	var toAddressList []string
-	var valueStrList []string
-	var inputStrList []string
-
-	// Build lists of parameters for batch transactions
-	if to != nil {
-		toAddressList = append(toAddressList, to.GetAddress().String())
+	batchSize := 20
+	var toAddress common.Address
+	if to == nil {
+		toAddress = common.Address{}
 	} else {
-		toAddressList = append(toAddressList, "nil")
+		toAddress = to.GetAddress()
 	}
-	valueStrList = append(valueStrList, value.String())
-	inputStrList = append(inputStrList, input)
 
-	txs := make([]*types.Transaction, len(toAddressList))
-	for i := range toAddressList {
+	txs := make([]*types.Transaction, batchSize)
+	for i := range batchSize {
 		nonce := self.GetNonce(c)
 		txs[i] = types.NewTransaction(
 			nonce,
-			common.HexToAddress(toAddressList[i]),
+			toAddress,
 			value,
 			100000,
 			gasPrice,

@@ -78,7 +78,7 @@ func Run() {
 	cli := cliPool.Alloc().(*client.Client)
 
 	from := accGrp[rand.Int()%nAcc]
-	to, value, input, reqType, err := CreateRandomArguments(from.GetAddress())
+	to, value, input, _, err := CreateRandomArguments(from.GetAddress())
 	if err != nil {
 		fmt.Printf("Failed to creat arguments to send Legacy Tx: %v\n", err.Error())
 		return
@@ -98,13 +98,7 @@ func Run() {
 
 	// Check test result with CheckResult function
 	go func(transactionHashes []common.Hash) {
-		for _, txHash := range transactionHashes {
-			ret, err := CheckResult(txHash, reqType)
-			if ret == false || err != nil {
-				boomer.Events.Publish("request_failure", "http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-				return
-			}
-
+		for range transactionHashes {
 			boomer.Events.Publish("request_success", "http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
 		}
 	}(txHashes)

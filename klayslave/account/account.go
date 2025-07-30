@@ -1876,6 +1876,27 @@ func (self *Account) TransferNewLegacyTxWithEthBatch(c *client.Client, endpoint 
 	return hashes, gasPrice, nil
 }
 
+func (self *Account) CheckReceiptsBatch(c *client.Client, txHashes []common.Hash) ([]*types.Receipt, error) {
+	ctx := context.Background()
+	defer ctx.Done()
+
+	receipts, err := c.TransactionReceiptBatch(ctx, txHashes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transaction receipts: %v", err)
+	}
+
+	for i, receipt := range receipts {
+		if receipt == nil {
+			return nil, fmt.Errorf("receipt not found for transaction %s", txHashes[i].Hex())
+		}
+		if receipt.Status != types.ReceiptStatusSuccessful {
+			return nil, fmt.Errorf("transaction %s failed with status %d", txHashes[i].Hex(), receipt.Status)
+		}
+	}
+
+	return receipts, nil
+}
+
 // This function is responsible for sending both Gasless Approve Transactions and Gasless Swap Transactions.
 func (self *Account) TransferNewGaslessTx(c *client.Client, endpoint string, testToken, gsr *Account) (common.Hash, common.Hash, *big.Int, error) {
 	self.mutex.Lock()

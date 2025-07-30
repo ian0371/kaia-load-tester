@@ -98,8 +98,22 @@ func Run() {
 
 	// Check test result with CheckResult function
 	go func(transactionHashes []common.Hash) {
-		for range transactionHashes {
-			boomer.Events.Publish("request_success", "http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
+		receipts, err := from.CheckReceiptsBatch(cli, txHashes)
+		if err != nil {
+			fmt.Printf("Failed to get transaction receipts: %v\n", err.Error())
+			for range txHashes {
+				boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
+			}
+			return
+		}
+
+		for _, rc := range receipts {
+			if rc.Status != types.ReceiptStatusSuccessful {
+				boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
+				continue
+			}
+
+			boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
 		}
 	}(txHashes)
 }

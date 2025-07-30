@@ -506,6 +506,38 @@ func (ec *Client) SendTransactionBatch(ctx context.Context, txs []*types.Transac
 	return ec.c.BatchCallContext(ctx, batch)
 }
 
+// TransactionReceiptBatch retrieves the transaction receipts for multiple transactions in a batch.
+//
+// Returns a slice of transaction receipts and an error if any of the batch calls fail.
+func (ec *Client) TransactionReceiptBatch(ctx context.Context, txHashes []common.Hash) ([]*types.Receipt, error) {
+	batch := make([]rpc.BatchElem, len(txHashes))
+	receipts := make([]*types.Receipt, len(txHashes))
+
+	for i, hash := range txHashes {
+		batch[i] = rpc.BatchElem{
+			Method: "eth_getTransactionReceipt",
+			Args:   []interface{}{hash},
+			Result: &receipts[i],
+		}
+	}
+
+	err := ec.c.BatchCallContext(ctx, batch)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range batch {
+		if batch[i].Error != nil {
+			return nil, batch[i].Error
+		}
+		if receipts[i] == nil {
+			return nil, fmt.Errorf("receipt not found for transaction %s", txHashes[i].Hex())
+		}
+	}
+
+	return receipts, nil
+}
+
 // SendRawTransaction injects a signed transaction into the pending pool for execution.
 //
 // This function can return the transaction hash and error.

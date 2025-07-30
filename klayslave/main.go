@@ -75,7 +75,7 @@ func main() {
 
 func RunAction(ctx *cli.Context) {
 	cfg := config.NewConfig(ctx)
-	accGrp := account.NewAccGroup(cfg.GetChainID(), cfg.GetGasPrice(), cfg.GetBaseFee(), cfg.InTheTcList("transferUnsignedTx"))
+	accGrp := account.NewAccGroup(cfg.GetChainID(), cfg.GetGasPrice(), cfg.GetBaseFee(), cfg.GetBatchSize(), cfg.InTheTcList("transferUnsignedTx"))
 	var nUserForGaslessRevertTx, nUserForGaslessApproveTx int = 0, 0
 	if cfg.InTheTcList("gaslessRevertTransactionTC") {
 		nUserForGaslessRevertTx = cfg.GetNUserForSigned() // same as nUserForSignedTx

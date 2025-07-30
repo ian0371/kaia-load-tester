@@ -34,6 +34,7 @@ type Config struct {
 
 	chargeKLAYAmount  int
 	chargeParallelNum int
+	batchSize         int
 
 	gEndpoint string
 
@@ -81,6 +82,7 @@ func (cfg *Config) setConfigsFromFlag(ctx *cli.Context) {
 	cfg.activeUserPercent = ctx.Int("activeUserPercent")
 	cfg.chargeKLAYAmount = ctx.Int("charge")
 	cfg.chargeParallelNum = ctx.Int("chargeParallel")
+	cfg.batchSize = ctx.Int("batchSize")
 	cfg.richWalletPrivateKey = ctx.String("key")
 	cfg.testTokenAddress = ctx.String("testTokenAddr")
 	cfg.gsrAddress = ctx.String("gsrAddr")
@@ -203,6 +205,7 @@ func (cfg *Config) GetExtendedTasks() []*testcase.ExtendedTask {
 func (cfg *Config) GetChainID() *big.Int            { return cfg.chainID }
 func (cfg *Config) GetGasPrice() *big.Int           { return cfg.gasPrice }
 func (cfg *Config) GetBaseFee() *big.Int            { return cfg.baseFee }
+func (cfg *Config) GetBatchSize() int               { return cfg.batchSize }
 func (cfg *Config) GetNUserForUnsigned() int        { return cfg.nUserForUnsigned }
 func (cfg *Config) GetNUserForSigned() int          { return cfg.nUserForSigned }
 func (cfg *Config) GetNUserForNewAccounts() int     { return cfg.nUserForNewAccounts }
@@ -237,6 +240,7 @@ var Flags = []cli.Flag{
 	cli.IntFlag{Name: "activeUserPercent", Value: 100, Usage: "percent of active accounts"},
 	cli.IntFlag{Name: "charge", Value: 1000000000, Usage: "charging amount for each test account in KLAY"},
 	cli.IntFlag{Name: "maxidleconns", Value: 100, Usage: "maximum number of idle connections in default http client"},
+	cli.IntFlag{Name: "batchSize", Value: 10, Usage: "batch size"},
 	cli.StringFlag{Name: "key", Usage: "private key of rich account for kaia charging of test accounts"},
 	cli.StringFlag{Name: "tc", Value: "", Usage: "tasks which user want to run, multiple tasks are separated by comma."},
 	cli.StringFlag{Name: "weights", Value: "", Usage: "weights which user want to run, multiple weights are separated by comma."},

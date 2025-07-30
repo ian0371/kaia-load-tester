@@ -43,10 +43,11 @@ type AccGroup struct {
 	contracts []*Account
 }
 
-func NewAccGroup(chainId *big.Int, gasPrice *big.Int, baseFee *big.Int, contains bool) *AccGroup {
+func NewAccGroup(chainId *big.Int, gasPrice *big.Int, baseFee *big.Int, batchSize int, contains bool) *AccGroup {
 	SetChainID(chainId)
 	SetGasPrice(gasPrice)
 	SetBaseFee(baseFee)
+	SetBatchSize(batchSize)
 
 	return &AccGroup{
 		containsUnsignedAccGrp: contains,

@@ -34,9 +34,10 @@ import (
 const Letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 var (
-	gasPrice *big.Int
-	chainID  *big.Int
-	baseFee  *big.Int
+	gasPrice  *big.Int
+	chainID   *big.Int
+	baseFee   *big.Int
+	batchSize int
 )
 
 type Account struct {
@@ -65,6 +66,10 @@ func SetBaseFee(bf *big.Int) {
 
 func SetChainID(id *big.Int) {
 	chainID = id
+}
+
+func SetBatchSize(bs int) {
+	batchSize = bs
 }
 
 func (acc *Account) Lock() {
@@ -1811,7 +1816,6 @@ func (self *Account) TransferNewLegacyTxWithEthBatch(c *client.Client, endpoint 
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
-	batchSize := 50
 	var toAddress common.Address
 	if to == nil {
 		toAddress = common.Address{}

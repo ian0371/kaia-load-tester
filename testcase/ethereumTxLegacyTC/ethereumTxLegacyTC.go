@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"math/rand"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	kaia "github.com/kaiachain/kaia"
@@ -45,6 +46,8 @@ var (
 
 	SmartContractAccount *account.Account
 	code                 string
+
+	cursor uint32
 )
 
 func Init(accs []*account.Account, endpoint string, gp *big.Int) {
@@ -60,7 +63,7 @@ func Init(accs []*account.Account, endpoint string, gp *big.Int) {
 		return c
 	}
 
-	cliPool.Init(20, 300, cliCreate)
+	cliPool.Init(1000, 3000, cliCreate)
 
 	for _, acc := range accs {
 		accGrp = append(accGrp, acc)
@@ -77,7 +80,7 @@ func Init(accs []*account.Account, endpoint string, gp *big.Int) {
 func Run() {
 	cli := cliPool.Alloc().(*client.Client)
 
-	from := accGrp[rand.Int()%nAcc]
+	from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 	to, value, input, _, err := CreateRandomArguments(from.GetAddress())
 	if err != nil {
 		fmt.Printf("Failed to creat arguments to send Legacy Tx: %v\n", err.Error())

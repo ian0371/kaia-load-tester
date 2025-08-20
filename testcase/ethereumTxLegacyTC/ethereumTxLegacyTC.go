@@ -88,47 +88,34 @@ func Run() {
 	}
 
 	start := boomer.Now()
-
-	txHashes, _, err := from.TransferNewLegacyTxWithEthBatch(cli, endPoint, to, value, input)
-
+	txHash, _, err := from.TransferNewLegacyTxWithEth(cli, endPoint, to, value, input)
 	elapsed := boomer.Now() - start
-
 	if err != nil {
-		boomer.Events.Publish("request_failure", "http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-	}
-
-	cliPool.Free(cli)
-
-	for range txHashes {
-		if err == nil {
-			boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
-		} else {
-			boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-		}
+		boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
 	}
 
 	/*
-		// Check test result with CheckResult function
-		go func(transactionHashes []common.Hash) {
-			receipts, err := from.CheckReceiptsBatch(cli, txHashes)
-			if err != nil {
-				fmt.Printf("Failed to get transaction receipts: %v\n", err.Error())
-				for range txHashes {
-					boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-				}
-				return
-			}
-
-			for _, rc := range receipts {
-				if rc.Status != types.ReceiptStatusSuccessful {
-					boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-					continue
-				}
-
+		for range txHashes {
+			if err == nil {
 				boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
+			} else {
+				boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
 			}
-		}(txHashes)
+		}
 	*/
+
+	cliPool.Free(cli)
+
+	// Check test result with CheckResult function
+	go func(h common.Hash) {
+		ret, err := CheckResult(h, 0)
+		if ret == false || err != nil {
+			boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
+			return
+		}
+
+		boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
+	}(txHash)
 }
 
 // CheckResult returns true and nil error, if expected results are observed, otherwise returns false and error.

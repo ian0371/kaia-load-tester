@@ -63,7 +63,7 @@ func Init(accs []*account.Account, endpoint string, gp *big.Int) {
 		return c
 	}
 
-	cliPool.Init(20, 1000, cliCreate)
+	cliPool.Init(500, 5000, cliCreate)
 
 	for _, acc := range accs {
 		accGrp = append(accGrp, acc)

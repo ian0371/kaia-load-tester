@@ -48,6 +48,22 @@ func (p *ClientPool) Alloc() interface{} {
 	return ret
 }
 
+func (p *ClientPool) MustAlloc() interface{} {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	var ret interface{}
+	if len(p.freeList) == 0 {
+		cli := p.allocFunc()
+		ret = cli
+		p.cnt++
+	} else {
+		ret = p.freeList[0]
+		p.freeList = p.freeList[1:]
+	}
+	return ret
+}
+
 func (p *ClientPool) Free(v interface{}) {
 	p.lock.Lock()
 	defer p.lock.Unlock()

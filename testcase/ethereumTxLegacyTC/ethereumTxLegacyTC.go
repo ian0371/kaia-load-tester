@@ -124,7 +124,7 @@ func Run() {
 
 // CheckResult returns true and nil error, if expected results are observed, otherwise returns false and error.
 func CheckResult(txHash common.Hash, reqType int) (bool, error) {
-	cli := cliPool.Alloc().(*client.Client)
+	cli := cliPool.MustAlloc().(*client.Client)
 	defer cliPool.Free(cli)
 
 	receipt := GetReceipt(cli, txHash, maxRetryCount)

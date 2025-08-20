@@ -1801,6 +1801,7 @@ func (self *Account) TransferNewLegacyTxWithEth(c *client.Client, endpoint strin
 			self.nonce++
 		} else {
 			fmt.Printf("Account(%v) nonce(%v) : Failed to sendTransaction: %v\n", self.GetAddress().String(), self.nonce, err)
+			self.nonce--
 		}
 	}
 	return tx.Hash(), gasPrice, err

@@ -34,6 +34,10 @@ func (p *ClientPool) Alloc() interface{} {
 
 	var ret interface{}
 	if len(p.freeList) == 0 {
+		if p.cnt < p.max {
+			return nil
+		}
+
 		cli := p.allocFunc()
 		ret = cli
 		p.cnt++

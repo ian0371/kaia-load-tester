@@ -63,7 +63,7 @@ func Init(accs []*account.Account, endpoint string, gp *big.Int) {
 		return c
 	}
 
-	cliPool.Init(20, 1000, cliCreate)
+	cliPool.Init(1000, 3000, cliCreate)
 
 	for _, acc := range accs {
 		accGrp = append(accGrp, acc)
@@ -79,9 +79,6 @@ func Init(accs []*account.Account, endpoint string, gp *big.Int) {
 
 func Run() {
 	cli := cliPool.Alloc().(*client.Client)
-	if cli == nil {
-		return
-	}
 
 	from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 	to, value, input, _, err := CreateRandomArguments(from.GetAddress())

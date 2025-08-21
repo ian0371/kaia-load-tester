@@ -78,7 +78,11 @@ func Init(accs []*account.Account, endpoint string, gp *big.Int) {
 }
 
 func Run() {
-	cli := cliPool.Alloc().(*client.Client)
+	cliOrNil := cliPool.Alloc()
+	if cliOrNil == nil {
+		return
+	}
+	cli := cliOrNil.(*client.Client)
 
 	from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 	to, value, input, _, err := CreateRandomArguments(from.GetAddress())
@@ -88,37 +92,39 @@ func Run() {
 	}
 
 	start := boomer.Now()
-	_, _, err = from.TransferNewLegacyTxWithEth(cli, endPoint, to, value, input)
+	txHash, _, err := from.TransferNewLegacyTxWithEth(cli, endPoint, to, value, input)
 	elapsed := boomer.Now() - start
 	if err != nil {
 		boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
 	}
 
-	if err == nil {
-		boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
-	} else {
-		boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-	}
+	/*
+		for range txHashes {
+			if err == nil {
+				boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
+			} else {
+				boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
+			}
+		}
+	*/
 
 	cliPool.Free(cli)
 
 	// Check test result with CheckResult function
-	/*
-		go func(h common.Hash) {
-			ret, err := CheckResult(h, 0)
-			if ret == false || err != nil {
-				boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-				return
-			}
+	go func(h common.Hash) {
+		ret, err := CheckResult(h, 0)
+		if ret == false || err != nil {
+			boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
+			return
+		}
 
-			boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
-		}(txHash)
-	*/
+		boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
+	}(txHash)
 }
 
 // CheckResult returns true and nil error, if expected results are observed, otherwise returns false and error.
 func CheckResult(txHash common.Hash, reqType int) (bool, error) {
-	cli := cliPool.Alloc().(*client.Client)
+	cli := cliPool.MustAlloc().(*client.Client)
 	defer cliPool.Free(cli)
 
 	receipt := GetReceipt(cli, txHash, maxRetryCount)

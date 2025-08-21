@@ -1763,47 +1763,53 @@ func (self *Account) TransferNewEthereumDynamicFeeTx(c *client.Client, to *Accou
 	return hash, gasPrice, nil
 }
 
-func (self *Account) TransferNewLegacyTxWithEth(c *client.Client, endpoint string, to *Account, value *big.Int, input string) (common.Hash, *big.Int, error) {
+func (self *Account) TransferNewLegacyTxWithEth(c *client.Client, endpoint string, to *Account, value *big.Int, input string, exePath string) (common.Hash, *big.Int, error) {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
 	nonce := self.GetNonce(c)
 
-	var toAddress common.Address
-	if to == nil {
-		toAddress = common.Address{}
+	// Ethereum LegacyTx
+	txType := "0"
+	gas := "100000"
+
+	var toAddress string
+	if to != nil {
+		toAddress = to.GetAddress().String()
 	} else {
-		toAddress = to.GetAddress()
+		// When to is nil, smart contract deployment with legacyTx case.
+		// To send as a command argument which has to be string type,
+		// explicitly send "nil" string for deploying.
+		toAddress = "nil"
+		gas = "200000"
 	}
 
-	tx := types.NewTransaction(
-		nonce,
-		toAddress,
-		value,
-		100000,
-		gasPrice,
-		common.FromHex(input),
-	)
-	self.nonce++
-
-	signer := types.LatestSignerForChainID(chainID)
-	err := tx.SignWithKeys(signer, self.privateKey)
+	// To test this, you need to update submodule and build executable file.
+	// ./ethTxGenerator endPoint txType chainID gasPrice gas baseFee value fromPrivateKey nonce to [data]
+	cmd := exec.Command(exePath, endpoint, txType, chainID.String(), gasPrice.String(), gas, baseFee.String(), value.String(), self.GetPrivateKey(), strconv.FormatUint(nonce, 10), toAddress, input)
+	result, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Fatalf("Failed to sign tx: %v", err)
+		log.Fatalf("Failed to create and send tx : %v", err)
 	}
 
-	ctx := context.Background()
-	err = c.SendTransaction(ctx, tx)
-	if err != nil {
+	strResult := string(result[:])
+	// Executable file will return transaction hash or error string.
+	// So if result does not include "0x" prefix, means something went wrong.
+	if !strings.Contains(strResult, "0x") {
+		err = errors.New(strResult)
 		if err.Error() == blockchain.ErrNonceTooLow.Error() || err.Error() == blockchain.ErrReplaceUnderpriced.Error() {
-			fmt.Printf("Account(%v) nonce(%v) : Failed to sendTransaction: %v\n", self.GetAddress().String(), self.nonce, err)
-			fmt.Printf("Account(%v) nonce is added to %v\n", self.GetAddress().String(), self.nonce+1)
+			fmt.Printf("Account(%v) nonce(%v) : Failed to sendTransaction: %v\n", self.GetAddress().String(), nonce, err)
+			fmt.Printf("Account(%v) nonce is added to %v\n", self.GetAddress().String(), nonce+1)
 			self.nonce++
 		} else {
-			fmt.Printf("Account(%v) nonce(%v) : Failed to sendTransaction: %v\n", self.GetAddress().String(), self.nonce, err)
+			fmt.Printf("Account(%v) nonce(%v) : Failed to sendTransaction: %v\n", self.GetAddress().String(), nonce, err)
 		}
+		return common.Hash{0}, gasPrice, err
 	}
-	return tx.Hash(), gasPrice, err
+
+	self.nonce++
+
+	return common.HexToHash(strResult), gasPrice, nil
 }
 
 func (self *Account) TransferNewLegacyTxWithEthBatch(c *client.Client, endpoint string, to *Account, value *big.Int, input string) ([]common.Hash, *big.Int, error) {

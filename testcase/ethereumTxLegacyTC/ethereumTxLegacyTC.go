@@ -78,11 +78,10 @@ func Init(accs []*account.Account, endpoint string, gp *big.Int) {
 }
 
 func Run() {
-	cliOrNil := cliPool.Alloc()
-	if cliOrNil == nil {
+	cli := cliPool.Alloc().(*client.Client)
+	if cli == nil {
 		return
 	}
-	cli := cliOrNil.(*client.Client)
 
 	from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 	to, value, input, _, err := CreateRandomArguments(from.GetAddress())

@@ -331,11 +331,21 @@ func (self *Account) TransferSignedTxWithGuaranteeRetry(c *ethclient.Client, to 
 	return lastTx
 }
 
-func (self *Account) SendSessionTx(c *ethclient.Client, sessionCtx *types.SessionContext) (common.Hash, error) {
+func (self *Account) SendSessionTx(c *ethclient.Client) (common.Hash, error) {
 	signer := types.LatestSignerForChainID(chainID)
 
-	nonce := uint64(time.Now().UnixMilli())
-	sessionCtx.Session.Nonce = nonce
+	ephemeralKey, _ := crypto.GenerateKey()
+	ephemeralAddr := crypto.PubkeyToAddress(ephemeralKey.PublicKey)
+	sessionCtx := types.SessionContext{
+		Command: types.SessionCreate,
+		Session: types.Session{
+			PublicKey: ephemeralAddr,
+			ExpiresAt: uint64(time.Now().Add(30 * time.Second).Unix()),
+			Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
+			Metadata:  nil,
+		},
+		L1Owner: self.GetAddress(),
+	}
 
 	typedData := types.ToTypedData(&sessionCtx.Session)
 	_, sigHash, _ := types.SignEip712(typedData)
@@ -345,13 +355,13 @@ func (self *Account) SendSessionTx(c *ethclient.Client, sessionCtx *types.Sessio
 	}
 	sessionCtx.L1Signature = sig
 
-	input, err := types.WrapTxAsInput(sessionCtx)
+	input, err := types.WrapTxAsInput(&sessionCtx)
 	if err != nil {
 		return common.Hash{}, err
 	}
 
 	tx := types.NewTransaction(
-		nonce,
+		sessionCtx.Session.Nonce,
 		types.DexAddress,
 		common.Big0,
 		0,
@@ -359,7 +369,7 @@ func (self *Account) SendSessionTx(c *ethclient.Client, sessionCtx *types.Sessio
 		input,
 	)
 
-	tx, err = types.SignTx(tx, signer, self.privateKey[0])
+	tx, err = types.SignTx(tx, signer, ephemeralKey)
 	if err != nil {
 		return common.Hash{}, err
 	}

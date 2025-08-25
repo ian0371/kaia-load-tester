@@ -1,14 +1,11 @@
 package dexTxSessionTC
 
 import (
-	"crypto/rand"
 	"fmt"
 	"log"
 	"math/big"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
 	"github.com/kaiachain/kaia-load-tester/klayslave/clipool"
@@ -55,14 +52,9 @@ func Run() {
 	defer cliPool.Free(cli)
 
 	from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-	sessionCtx, err := GenerateSessionCreateTx(from.GetAddress())
-	if err != nil {
-		fmt.Printf("Failed to creat arguments to send Legacy Tx: %v\n", err.Error())
-		return
-	}
 
 	start := boomer.Now()
-	_, err = from.SendSessionTx(cli, sessionCtx)
+	_, err := from.SendSessionTx(cli)
 	elapsed := boomer.Now() - start
 
 	if err != nil {
@@ -72,23 +64,4 @@ func Run() {
 	}
 
 	boomer.RecordSuccess("http", "SendSessionTx"+" to "+endPoint, elapsed, int64(10))
-}
-
-func GenerateSessionCreateTx(addr common.Address) (*types.SessionContext, error) {
-	randomAddr := make([]byte, 20)
-	rand.Read(randomAddr)
-	randomPubkey := common.BytesToAddress(randomAddr)
-	ret := types.SessionContext{
-		Command: types.SessionCreate,
-		Session: types.Session{
-			PublicKey: randomPubkey,
-			ExpiresAt: 999999999999,
-			Nonce:     0, // to be filled at send
-			Metadata:  nil,
-		},
-		L1Owner:     addr,
-		L1Signature: nil,
-	}
-
-	return &ret, nil
 }

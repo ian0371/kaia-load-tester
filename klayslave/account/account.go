@@ -337,6 +337,14 @@ func (self *Account) SendSessionTx(c *ethclient.Client, sessionCtx *types.Sessio
 	nonce := uint64(time.Now().UnixMilli())
 	sessionCtx.Session.Nonce = nonce
 
+	typedData := types.ToTypedData(&sessionCtx.Session)
+	_, sigHash, _ := types.SignEip712(typedData)
+	sig, err := crypto.Sign(sigHash, self.privateKey[0])
+	if err != nil {
+		return common.Hash{}, err
+	}
+	sessionCtx.L1Signature = sig
+
 	input, err := types.WrapTxAsInput(sessionCtx)
 	if err != nil {
 		return common.Hash{}, err
@@ -344,7 +352,7 @@ func (self *Account) SendSessionTx(c *ethclient.Client, sessionCtx *types.Sessio
 
 	tx := types.NewTransaction(
 		nonce,
-		sessionCtx.Session.PublicKey,
+		types.DexAddress,
 		common.Big0,
 		0,
 		common.Big0,

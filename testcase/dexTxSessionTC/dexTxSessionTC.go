@@ -89,5 +89,6 @@ func GenerateSessionCreateTx(addr common.Address) (*types.SessionContext, error)
 		L1Owner:     addr,
 		L1Signature: nil,
 	}
+
 	return &ret, nil
 }

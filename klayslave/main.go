@@ -12,26 +12,10 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
 	"github.com/kaiachain/kaia-load-tester/klayslave/config"
 	"github.com/kaiachain/kaia-load-tester/testcase"
-	"github.com/kaiachain/kaia-load-tester/testcase/erc20TransferTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/erc721TransferTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/ethereumTxAccessListTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/ethereumTxDynamicFeeTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/ethereumTxLegacyTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/gaslessOnlyApproveTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/gaslessRevertTransactionTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/gaslessTransactionTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/newEthereumAccessListTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/newEthereumDynamicFeeTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/newFeeDelegatedSmartContractExecutionTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/newFeeDelegatedSmartContractExecutionWithRatioTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/newSmartContractExecutionTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/storageTrieWriteTC"
-	"github.com/kaiachain/kaia/accounts/abi/bind"
-	"github.com/kaiachain/kaia/api/debug"
-	"github.com/kaiachain/kaia/console"
 	"github.com/myzhan/boomer"
 	"github.com/urfave/cli"
 )
@@ -60,8 +44,6 @@ func init() {
 	}
 	app.Action = RunAction
 	app.After = func(cli *cli.Context) error {
-		debug.Exit()
-		console.Stdin.Close() // Resets terminal mode.
 		return nil
 	}
 }
@@ -93,25 +75,6 @@ func RunAction(ctx *cli.Context) {
 
 // TODO-kaia-load-tester: remove global variables in the tc packages
 func setSmartContractAddressPerPackage(a *account.AccGroup) {
-	erc20TransferTC.SmartContractAccount = a.GetTestContractByName(account.ContractErc20)
-	erc721TransferTC.SmartContractAccount = a.GetTestContractByName(account.ContractErc721)
-	storageTrieWriteTC.SmartContractAccount = a.GetTestContractByName(account.ContractStorageTrie)
-
-	newSmartContractExecutionTC.SmartContractAccount = a.GetTestContractByName(account.ContractGeneral)
-	newFeeDelegatedSmartContractExecutionTC.SmartContractAccount = a.GetTestContractByName(account.ContractGeneral)
-	newFeeDelegatedSmartContractExecutionWithRatioTC.SmartContractAccount = a.GetTestContractByName(account.ContractGeneral)
-	ethereumTxLegacyTC.SmartContractAccount = a.GetTestContractByName(account.ContractGeneral)
-	ethereumTxAccessListTC.SmartContractAccount = a.GetTestContractByName(account.ContractGeneral)
-	ethereumTxDynamicFeeTC.SmartContractAccount = a.GetTestContractByName(account.ContractGeneral)
-	newEthereumAccessListTC.SmartContractAccount = a.GetTestContractByName(account.ContractGeneral)
-	newEthereumDynamicFeeTC.SmartContractAccount = a.GetTestContractByName(account.ContractGeneral)
-
-	gaslessTransactionTC.TestTokenAccount = a.GetTestContractByName(account.ContractGaslessToken)
-	gaslessTransactionTC.GsrAccount = a.GetTestContractByName(account.ContractGaslessSwapRouter)
-	gaslessRevertTransactionTC.TestTokenAccount = a.GetTestContractByName(account.ContractGaslessToken)
-	gaslessRevertTransactionTC.GsrAccount = a.GetTestContractByName(account.ContractGaslessSwapRouter)
-	gaslessOnlyApproveTC.TestTokenAccount = a.GetTestContractByName(account.ContractGaslessToken)
-	gaslessOnlyApproveTC.GsrAccount = a.GetTestContractByName(account.ContractGaslessSwapRouter)
 }
 
 // createTestAccGroupsAndPrepareContracts do every init steps before task.Init

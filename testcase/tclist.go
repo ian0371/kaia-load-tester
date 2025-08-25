@@ -17,8 +17,8 @@ type ExtendedTaskSet []*ExtendedTask
 
 // TcList initializes TCs and returns a slice of TCs.
 var TcList = map[string]*ExtendedTask{
-	"sessionTx": {
-		Name:   "sessionTx",
+	"sessionTxTC": {
+		Name:   "sessionTxTC",
 		Weight: 10,
 		Fn:     dexTxSessionTC.Run,
 		Init:   dexTxSessionTC.Init,

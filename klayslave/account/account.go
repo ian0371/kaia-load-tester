@@ -334,7 +334,7 @@ func (self *Account) TransferSignedTxWithGuaranteeRetry(c *ethclient.Client, to 
 func (self *Account) SendSessionTx(c *ethclient.Client, sessionCtx *types.SessionContext) (common.Hash, error) {
 	signer := types.LatestSignerForChainID(chainID)
 
-	nonce := uint64(time.Now().UnixNano())
+	nonce := uint64(time.Now().UnixMilli())
 	sessionCtx.Session.Nonce = nonce
 
 	input, err := types.WrapTxAsInput(sessionCtx)

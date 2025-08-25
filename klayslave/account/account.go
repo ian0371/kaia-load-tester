@@ -378,10 +378,46 @@ func (self *Account) TransferNewLegacyTxWithEth(c *ethclient.Client, endpoint st
 	return common.HexToHash(strResult), gasPrice, nil
 }
 
+func (self *Account) SendSessionTx(c *ethclient.Client, sessionCtx *types.SessionContext) (common.Hash, error) {
+	signer := types.LatestSignerForChainID(chainID)
+
+	nonce := uint64(time.Now().UnixNano())
+	sessionCtx.Session.Nonce = nonce
+
+	input, err := types.WrapTxAsInput(sessionCtx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	tx := types.NewTransaction(
+		nonce,
+		sessionCtx.Session.PublicKey,
+		common.Big0,
+		0,
+		common.Big0,
+		input,
+	)
+
+	tx, err = types.SignTx(tx, signer, self.privateKey[0])
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	err = c.SendTransaction(ctx, tx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	return tx.Hash(), nil
+}
+
 /*
 func (self *Account) TransferNewLegacyTxWithEthBatch(c *ethclient.Client, endpoint string, to *Account, value *big.Int, input string) ([]common.Hash, *big.Int, error) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
+	self.mutex.lock()
+	defer self.mutex.unlock()
 
 	var toAddress common.Address
 	if to == nil {

@@ -1,15 +1,18 @@
 package dexTxSessionTC
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"math/big"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
 	"github.com/kaiachain/kaia-load-tester/klayslave/clipool"
+	"github.com/myzhan/boomer"
 )
 
 const Name = "dexTxSessionTC"
@@ -48,68 +51,43 @@ func Init(accs []*account.Account, endpoint string, _ *big.Int) {
 }
 
 func Run() {
-	/*
-		cli := cliPool.Alloc().(*rpc.Client)
+	cli := cliPool.Alloc().(*ethclient.Client)
+	defer cliPool.Free(cli)
 
-		from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		to, value, input, _, err := CreateRandomArguments(from.GetAddress())
-		if err != nil {
-			fmt.Printf("Failed to creat arguments to send Legacy Tx: %v\n", err.Error())
-			return
-		}
+	from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
+	sessionCtx, err := GenerateSessionCreateTx(from.GetAddress())
+	if err != nil {
+		fmt.Printf("Failed to creat arguments to send Legacy Tx: %v\n", err.Error())
+		return
+	}
 
-		start := boomer.Now()
+	start := boomer.Now()
+	_, err = from.SendSessionTx(cli, sessionCtx)
+	elapsed := boomer.Now() - start
 
-		txHashes, _, err := from.TransferNewLegacyTxWithEthBatch(cli, endPoint, to, value, input)
+	if err != nil {
+		fmt.Printf("Failed to send session tx: %v\n", err.Error())
+		boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, err.Error())
+		return
+	}
 
-		elapsed := boomer.Now() - start
-
-		if err != nil {
-			boomer.Events.Publish("request_failure", "http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-		}
-
-		cliPool.Free(cli)
-
-		for range txHashes {
-			if err == nil {
-				boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
-			} else {
-				boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-			}
-		}
-	*/
-
-	/*
-		// Check test result with CheckResult function
-		go func(transactionHashes []common.Hash) {
-			receipts, err := from.CheckReceiptsBatch(cli, txHashes)
-			if err != nil {
-				fmt.Printf("Failed to get transaction receipts: %v\n", err.Error())
-				for range txHashes {
-					boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-				}
-				return
-			}
-
-			for _, rc := range receipts {
-				if rc.Status != types.ReceiptStatusSuccessful {
-					boomer.RecordFailure("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, err.Error())
-					continue
-				}
-
-				boomer.RecordSuccess("http", "TransferNewLegacyTx"+" to "+endPoint, elapsed, int64(10))
-			}
-		}(txHashes)
-	*/
+	boomer.RecordSuccess("http", "SendSessionTx"+" to "+endPoint, elapsed, int64(10))
 }
 
-func CreateRandomArguments(addr common.Address) (*account.Account, *big.Int, string, int, error) {
-	x := types.SessionContext{
+func GenerateSessionCreateTx(addr common.Address) (*types.SessionContext, error) {
+	randomAddr := make([]byte, 20)
+	rand.Read(randomAddr)
+	randomPubkey := common.BytesToAddress(randomAddr)
+	ret := types.SessionContext{
 		Command: types.SessionCreate,
 		Session: types.Session{
-			PublicKey: addr,
+			PublicKey: randomPubkey,
+			ExpiresAt: 999999999999,
+			Nonce:     0, // to be filled at send
+			Metadata:  nil,
 		},
+		L1Owner:     addr,
+		L1Signature: nil,
 	}
-	fmt.Println(x)
-	return nil, nil, "", 0, nil
+	return &ret, nil
 }

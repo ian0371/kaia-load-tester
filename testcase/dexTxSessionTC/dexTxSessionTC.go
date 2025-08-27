@@ -53,9 +53,30 @@ func Run() {
 
 	from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 
+	// create session
 	start := boomer.Now()
-	_, err := from.SendSessionTx(cli)
+	tx, err := from.GenSessionCreateTx()
+	if err != nil {
+		return
+	}
+	_, err = from.SendTx(cli, tx)
 	elapsed := boomer.Now() - start
+	if err != nil {
+		fmt.Printf("Failed to send session tx: %v\n", err.Error())
+		boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, err.Error())
+		return
+	}
+
+	boomer.RecordSuccess("http", "SendSessionTx"+" to "+endPoint, elapsed, int64(10))
+
+	// delete session
+	start = boomer.Now()
+	tx, err = from.GenSessionDeleteTx()
+	if err != nil {
+		return
+	}
+	_, err = from.SendTx(cli, tx)
+	elapsed = boomer.Now() - start
 
 	if err != nil {
 		fmt.Printf("Failed to send session tx: %v\n", err.Error())

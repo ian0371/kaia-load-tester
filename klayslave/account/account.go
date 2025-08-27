@@ -331,7 +331,7 @@ func (self *Account) TransferSignedTxWithGuaranteeRetry(c *ethclient.Client, to 
 	return lastTx
 }
 
-func (self *Account) SendSessionTx(c *ethclient.Client) (common.Hash, error) {
+func (self *Account) GenSessionCreateTx() (*types.Transaction, error) {
 	signer := types.LatestSignerForChainID(chainID)
 
 	ephemeralKey, _ := crypto.GenerateKey()
@@ -351,13 +351,13 @@ func (self *Account) SendSessionTx(c *ethclient.Client) (common.Hash, error) {
 	_, sigHash, _ := types.SignEip712(typedData)
 	sig, err := crypto.Sign(sigHash, self.privateKey[0])
 	if err != nil {
-		return common.Hash{}, err
+		return nil, err
 	}
 	sessionCtx.L1Signature = sig
 
 	input, err := types.WrapTxAsInput(&sessionCtx)
 	if err != nil {
-		return common.Hash{}, err
+		return nil, err
 	}
 
 	tx := types.NewTransaction(
@@ -371,13 +371,61 @@ func (self *Account) SendSessionTx(c *ethclient.Client) (common.Hash, error) {
 
 	tx, err = types.SignTx(tx, signer, ephemeralKey)
 	if err != nil {
-		return common.Hash{}, err
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (self *Account) GenSessionDeleteTx() (*types.Transaction, error) {
+	signer := types.LatestSignerForChainID(chainID)
+
+	ephemeralKey, _ := crypto.GenerateKey()
+	ephemeralAddr := crypto.PubkeyToAddress(ephemeralKey.PublicKey)
+	sessionCtx := types.SessionContext{
+		Command: types.SessionDelete,
+		Session: types.Session{
+			PublicKey: ephemeralAddr,
+			ExpiresAt: uint64(time.Now().Add(30 * time.Second).Unix()),
+			Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
+			Metadata:  nil,
+		},
+		L1Owner: self.GetAddress(),
 	}
 
+	typedData := types.ToTypedData(&sessionCtx.Session)
+	_, sigHash, _ := types.SignEip712(typedData)
+	sig, err := crypto.Sign(sigHash, self.privateKey[0])
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx.L1Signature = sig
+
+	input, err := types.WrapTxAsInput(&sessionCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(
+		sessionCtx.Session.Nonce,
+		types.DexAddress,
+		common.Big0,
+		0,
+		common.Big0,
+		input,
+	)
+
+	tx, err = types.SignTx(tx, signer, ephemeralKey)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (self *Account) SendTx(c *ethclient.Client, tx *types.Transaction) (common.Hash, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	err = c.SendTransaction(ctx, tx)
+	err := c.SendTransaction(ctx, tx)
 	if err != nil {
 		return common.Hash{}, err
 	}

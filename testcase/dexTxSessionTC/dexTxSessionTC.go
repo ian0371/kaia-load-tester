@@ -70,16 +70,13 @@ func Run() {
 	elapsed := boomer.Now() - start
 	if err != nil {
 		fmt.Printf("Failed to send session tx: %v\n", err.Error())
-		boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, err.Error())
 		return
 	}
 
-	boomer.RecordSuccess("http", "SendSessionTx"+" to "+endPoint, elapsed, int64(10))
-
 	for i, hash := range hashes {
 		if hash == (common.Hash{}) {
-			fmt.Printf("Failed to send session tx %v: %v\n", txs[i], err.Error())
-			boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, err.Error())
+			fmt.Printf("Failed to send session tx %v\n", txs[i])
+			boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, "Failed to send session tx")
 		} else {
 			boomer.RecordSuccess("http", "SendSessionTx"+" to "+endPoint, elapsed, int64(10))
 		}

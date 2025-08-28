@@ -16,7 +16,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -262,9 +261,14 @@ func (self *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client
 		defer self.mutex.Unlock()
 	}
 
-	nonce := self.GetNonce(c)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
 
-	// fmt.Printf("account=%v, nonce = %v\n", self.GetAddress().String(), nonce)
+	nonce, err := c.NonceAt(ctx, self.GetAddress(), nil)
+	if err != nil {
+		return nil, big.NewInt(0), err
+	}
+	self.nonce = nonce
 
 	tx := types.NewTransaction(
 		nonce,
@@ -275,23 +279,13 @@ func (self *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client
 		nil)
 	gasPrice := tx.GasPrice()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
-
 	signer := types.LatestSignerForChainID(chainID)
-	tx, err := types.SignTx(tx, signer, self.privateKey[0])
+	tx, err = types.SignTx(tx, signer, self.privateKey[0])
 	if err != nil {
 		return nil, gasPrice, err
 	}
 	err = c.SendTransaction(ctx, tx)
 	if err != nil {
-		if err.Error() == core.ErrNonceTooLow.Error() {
-			fmt.Printf("Account(%v) nonce(%v) : Failed to sendTransaction: %v\n", self.GetAddress().String(), nonce, err)
-			fmt.Printf("Account(%v) nonce is added to %v\n", self.GetAddress().String(), nonce+1)
-			self.nonce++
-		} else {
-			fmt.Printf("Account(%v) nonce(%v) : Failed to sendTransaction: %v\n", self.GetAddress().String(), nonce, err)
-		}
 		return tx, gasPrice, err
 	}
 

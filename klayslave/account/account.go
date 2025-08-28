@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 const Letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -439,6 +440,28 @@ func (self *Account) SendTx(c *ethclient.Client, tx *types.Transaction) (common.
 	}
 
 	return tx.Hash(), nil
+}
+
+func (self *Account) SendTxBatch(c *ethclient.Client, txs []*types.Transaction) ([]common.Hash, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	reqs := make([]rpc.BatchElem, len(txs))
+	ret := make([]common.Hash, len(txs))
+	for i := range txs {
+		reqs[i] = rpc.BatchElem{
+			Method: "eth_sendTransaction",
+			Args:   []interface{}{txs[i]},
+			Result: &ret[i],
+		}
+	}
+
+	err := c.Client().BatchCallContext(ctx, reqs)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }
 
 /*

@@ -16,9 +16,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -442,23 +444,31 @@ func (self *Account) SendTx(c *ethclient.Client, tx *types.Transaction) (common.
 	return tx.Hash(), nil
 }
 
-func (self *Account) SendTxBatch(c *ethclient.Client, txs []*types.Transaction) ([]common.Hash, error) {
+func (self *Account) SendTxBatch(c *ethclient.Client, txs []*types.Transaction) ([]*hexutil.Bytes, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
 	reqs := make([]rpc.BatchElem, len(txs))
-	ret := make([]common.Hash, len(txs))
+	ret := make([]*hexutil.Bytes, len(txs))
 	for i := range txs {
+		rlpTx, err := rlp.EncodeToBytes(txs[i])
+		if err != nil {
+			return nil, err
+		}
 		reqs[i] = rpc.BatchElem{
-			Method: "eth_sendTransaction",
-			Args:   []interface{}{txs[i]},
-			Result: &ret[i],
+			Method: "eth_sendRawTransaction",
+			Args:   []interface{}{hexutil.Encode(rlpTx)},
+			Result: new(hexutil.Bytes),
 		}
 	}
 
 	err := c.Client().BatchCallContext(ctx, reqs)
 	if err != nil {
 		return nil, err
+	}
+
+	for i := range txs {
+		ret[i] = reqs[i].Result.(*hexutil.Bytes)
 	}
 
 	return ret, nil

@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
@@ -66,15 +65,16 @@ func Run() {
 	}
 	txs := []*types.Transaction{sessionCreatetx, sessionDeleteTx}
 	start := boomer.Now()
-	hashes, err := from.SendTxBatch(cli, txs)
+	rets, err := from.SendTxBatch(cli, txs)
 	elapsed := boomer.Now() - start
 	if err != nil {
 		fmt.Printf("Failed to send session tx: %v\n", err.Error())
 		return
 	}
 
-	for i, hash := range hashes {
-		if hash == (common.Hash{}) {
+	for i, ret := range rets {
+		fmt.Printf("result: %v\n", ret)
+		if ret == nil {
 			fmt.Printf("Failed to send session tx %v\n", txs[i])
 			boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, "Failed to send session tx")
 		} else {

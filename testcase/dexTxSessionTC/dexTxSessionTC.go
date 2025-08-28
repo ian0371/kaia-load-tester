@@ -55,7 +55,7 @@ func Run() {
 
 	// create session
 	start := boomer.Now()
-	tx, err := from.GenSessionCreateTx()
+	tx, sessionCtx, sessionKey, err := from.GenSessionCreateTx()
 	if err != nil {
 		return
 	}
@@ -71,7 +71,7 @@ func Run() {
 
 	// delete session
 	start = boomer.Now()
-	tx, err = from.GenSessionDeleteTx()
+	tx, err = from.GenSessionDeleteTx(sessionCtx, sessionKey)
 	if err != nil {
 		return
 	}

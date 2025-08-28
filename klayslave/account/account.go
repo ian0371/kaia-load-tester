@@ -325,7 +325,10 @@ func (self *Account) TransferSignedTxWithGuaranteeRetry(c *ethclient.Client, to 
 	return lastTx
 }
 
-func (self *Account) GenSessionCreateTx() (*types.Transaction, error) {
+func (self *Account) GenSessionCreateTx() (*types.Transaction, *types.SessionContext, *ecdsa.PrivateKey, error) {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+
 	signer := types.LatestSignerForChainID(chainID)
 
 	ephemeralKey, _ := crypto.GenerateKey()
@@ -345,13 +348,13 @@ func (self *Account) GenSessionCreateTx() (*types.Transaction, error) {
 	_, sigHash, _ := types.SignEip712(typedData)
 	sig, err := crypto.Sign(sigHash, self.privateKey[0])
 	if err != nil {
-		return nil, err
+		return nil, &sessionCtx, ephemeralKey, err
 	}
 	sessionCtx.L1Signature = sig
 
 	input, err := types.WrapTxAsInput(&sessionCtx)
 	if err != nil {
-		return nil, err
+		return nil, &sessionCtx, ephemeralKey, err
 	}
 
 	tx := types.NewTransaction(
@@ -365,24 +368,20 @@ func (self *Account) GenSessionCreateTx() (*types.Transaction, error) {
 
 	tx, err = types.SignTx(tx, signer, ephemeralKey)
 	if err != nil {
-		return nil, err
+		return nil, &sessionCtx, ephemeralKey, err
 	}
-	return tx, nil
+	return tx, &sessionCtx, ephemeralKey, nil
 }
 
-func (self *Account) GenSessionDeleteTx() (*types.Transaction, error) {
+func (self *Account) GenSessionDeleteTx(target *types.SessionContext, sessionKey *ecdsa.PrivateKey) (*types.Transaction, error) {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+
 	signer := types.LatestSignerForChainID(chainID)
 
-	ephemeralKey, _ := crypto.GenerateKey()
-	ephemeralAddr := crypto.PubkeyToAddress(ephemeralKey.PublicKey)
 	sessionCtx := types.SessionContext{
 		Command: types.SessionDelete,
-		Session: types.Session{
-			PublicKey: ephemeralAddr,
-			ExpiresAt: uint64(time.Now().Add(30 * time.Second).Unix()),
-			Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
-			Metadata:  nil,
-		},
+		Session: target.Session,
 		L1Owner: self.GetAddress(),
 	}
 
@@ -408,7 +407,7 @@ func (self *Account) GenSessionDeleteTx() (*types.Transaction, error) {
 		input,
 	)
 
-	tx, err = types.SignTx(tx, signer, ephemeralKey)
+	tx, err = types.SignTx(tx, signer, sessionKey)
 	if err != nil {
 		return nil, err
 	}

@@ -73,12 +73,11 @@ func Run() {
 	}
 
 	for i, ret := range rets {
-		fmt.Printf("result: %v\n", ret)
-		if ret == nil {
-			fmt.Printf("Failed to send session tx %v\n", txs[i])
-			boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, "Failed to send session tx")
-		} else {
+		if ret != nil && len(*ret) == 32 {
 			boomer.RecordSuccess("http", "SendSessionTx"+" to "+endPoint, elapsed, int64(10))
+		} else {
+			fmt.Printf("Failed to send session tx %v\n", txs[i])
+			boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, ret.String())
 		}
 	}
 }

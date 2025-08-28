@@ -8,7 +8,7 @@ fi
 master=$MASTER
 en=$EN
 key=$KEY
-cmd="./kaia-load-tester/build/bin/klayslave --max-rps 5000 --master-host $master --master-port 5557 -key $key -tc="ethereumTxLegacyTC" -endpoint $en --vusigned 1000 --batchSize 1"
+cmd="./build/bin/klayslave --max-rps 5000 --master-host $master --master-port 5557 -key $key -tc="sessionTxTC" -endpoint $en --vusigned 1000 --batchSize 1"
 
 
 # Extract the number from hostname and set base_sleep

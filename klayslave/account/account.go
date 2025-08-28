@@ -337,7 +337,7 @@ func (self *Account) GenSessionCreateTx() (*types.Transaction, *types.SessionCon
 		Command: types.SessionCreate,
 		Session: types.Session{
 			PublicKey: ephemeralAddr,
-			ExpiresAt: uint64(time.Now().Add(30 * time.Second).Unix()),
+			ExpiresAt: uint64(time.Now().Add(600 * time.Second).Unix()),
 			Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
 			Metadata:  nil,
 		},

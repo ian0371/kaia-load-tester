@@ -337,12 +337,17 @@ func (self *Account) GenSessionCreateTx() (*types.Transaction, *types.SessionCon
 		Command: types.SessionCreate,
 		Session: types.Session{
 			PublicKey: ephemeralAddr,
-			ExpiresAt: uint64(time.Now().Add(600 * time.Second).Unix()),
+			ExpiresAt: uint64(1000000),
 			Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
 			Metadata:  nil,
 		},
 		L1Owner: self.GetAddress(),
 	}
+	fmt.Printf("GenSessionCreateTx: PublicKey: %s, ExpiresAt: %d, Nonce: %d\n",
+		sessionCtx.Session.PublicKey.Hex(),
+		sessionCtx.Session.ExpiresAt,
+		sessionCtx.Session.Nonce,
+	)
 
 	typedData := types.ToTypedData(&sessionCtx.Session)
 	_, sigHash, _ := types.SignEip712(typedData)
@@ -389,6 +394,11 @@ func (self *Account) GenSessionDeleteTx(target *types.SessionContext, sessionKey
 		},
 		L1Owner: self.GetAddress(),
 	}
+	fmt.Printf("GenSessionDeleteTx: PublicKey: %s, ExpiresAt: %d, Nonce: %d\n",
+		sessionCtx.Session.PublicKey.Hex(),
+		sessionCtx.Session.ExpiresAt,
+		sessionCtx.Session.Nonce,
+	)
 
 	typedData := types.ToTypedData(&sessionCtx.Session)
 	_, sigHash, _ := types.SignEip712(typedData)

@@ -381,7 +381,12 @@ func (self *Account) GenSessionDeleteTx(target *types.SessionContext, sessionKey
 
 	sessionCtx := types.SessionContext{
 		Command: types.SessionDelete,
-		Session: target.Session,
+		Session: types.Session{
+			PublicKey: target.Session.PublicKey,
+			ExpiresAt: target.Session.ExpiresAt,
+			Nonce:     target.Session.Nonce + 1,
+			Metadata:  target.Session.Metadata,
+		},
 		L1Owner: self.GetAddress(),
 	}
 

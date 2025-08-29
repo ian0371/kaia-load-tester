@@ -39,6 +39,7 @@ type Account struct {
 	sessionKey []*ecdsa.PrivateKey
 	sessionCtx []*types.SessionContext // not nil once session is registered
 	nonce      uint64
+	timenonce  uint64
 	balance    *big.Int
 	mutex      sync.Mutex
 }
@@ -405,9 +406,14 @@ func (acc *Account) GenTransferTx(to *Account, value *big.Int) (*types.Transacti
 		return nil, err
 	}
 
-	nonce := uint64(time.Now().UnixMilli()) + uint64(rand.Intn(2000)) - 1000 // timestamp nonce ± 1000
+	if acc.timenonce == 0 {
+		acc.timenonce = uint64(time.Now().UnixMilli())
+	} else {
+		acc.timenonce++
+	}
+
 	tx := types.NewTransaction(
-		nonce,
+		acc.timenonce,
 		types.DexAddress,
 		common.Big0,
 		0,

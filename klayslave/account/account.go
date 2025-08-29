@@ -160,11 +160,11 @@ func (acc *Account) UpdateNonce() {
 	acc.nonce++
 }
 
-// NewSession creates a new session, appends it to the account, and returns the index
-func (acc *Account) NewSession() (int, error) {
+// NewSessionCreateCtx creates a new session
+func (acc *Account) NewSessionCreateCtx() (*types.SessionContext, *ecdsa.PrivateKey, error) {
 	sessionKey, err := crypto.GenerateKey()
 	if err != nil {
-		return -1, err
+		return nil, nil, err
 	}
 	sessionAddr := crypto.PubkeyToAddress(sessionKey.PublicKey)
 
@@ -183,14 +183,49 @@ func (acc *Account) NewSession() (int, error) {
 	_, sigHash, _ := types.SignEip712(typedData)
 	sig, err := crypto.Sign(sigHash, acc.privateKey)
 	if err != nil {
-		return -1, err
+		return nil, nil, err
 	}
 	sessionCtx.L1Signature = sig
 
-	acc.sessionKey = append(acc.sessionKey, sessionKey)
-	acc.sessionCtx = append(acc.sessionCtx, &sessionCtx)
+	return &sessionCtx, sessionKey, nil
+}
 
-	return len(acc.sessionKey) - 1, nil
+// NewSessionDeleteCtx creates a new session
+func (acc *Account) NewSessionDeleteCtx(i int) (*types.SessionContext, error) {
+	target := acc.sessionCtx[i]
+	sessionKey := acc.sessionKey[i]
+	sessionAddr := target.Session.PublicKey
+	sessionCtx := types.SessionContext{
+		Command: types.SessionDelete,
+		Session: types.Session{
+			PublicKey: sessionAddr,
+			ExpiresAt: target.Session.ExpiresAt,
+			Nonce:     target.Session.Nonce + 1,
+			Metadata:  target.Session.Metadata,
+		},
+		L1Owner: acc.GetAddress(),
+	}
+
+	typedData := types.ToTypedData(&sessionCtx.Session)
+	_, sigHash, _ := types.SignEip712(typedData)
+	sig, err := crypto.Sign(sigHash, sessionKey)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx.L1Signature = sig
+
+	return &sessionCtx, nil
+}
+
+// NewValueTransferCtx creates a new session
+func (acc *Account) NewValueTransferCtx(to *Account, value *big.Int) (*types.ValueTransferContext, error) {
+	vtCtx := types.ValueTransferContext{
+		L1Owner: acc.GetAddress(),
+		To:      to.GetAddress(),
+		Value:   value,
+	}
+
+	return &vtCtx, nil
 }
 
 func (acc *Account) GetReceipt(c *ethclient.Client, txHash common.Hash) (*types.Receipt, error) {
@@ -297,12 +332,13 @@ func (acc *Account) GenSessionCreateTx() (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
 
-	i, err := acc.NewSession()
+	sessionCtx, sessionKey, err := acc.NewSessionCreateCtx()
 	if err != nil {
 		return nil, err
 	}
 
-	sessionCtx := acc.sessionCtx[i]
+	acc.sessionCtx = append(acc.sessionCtx, sessionCtx)
+	acc.sessionKey = append(acc.sessionKey, sessionKey)
 
 	input, err := types.WrapTxAsInput(sessionCtx)
 	if err != nil {
@@ -319,7 +355,7 @@ func (acc *Account) GenSessionCreateTx() (*types.Transaction, error) {
 	)
 
 	signer := types.LatestSignerForChainID(chainID)
-	tx, err = types.SignTx(tx, signer, acc.sessionKey[i])
+	tx, err = types.SignTx(tx, signer, sessionKey)
 	if err != nil {
 		return nil, err
 	}
@@ -330,29 +366,13 @@ func (acc *Account) GenSessionDeleteTx(i int) (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
 
-	signer := types.LatestSignerForChainID(chainID)
-
-	sessionAddr := crypto.PubkeyToAddress(acc.sessionKey[i].PublicKey)
-	sessionCtx := types.SessionContext{
-		Command: types.SessionDelete,
-		Session: types.Session{
-			PublicKey: sessionAddr,
-			ExpiresAt: acc.sessionCtx[i].Session.ExpiresAt,
-			Nonce:     acc.sessionCtx[i].Session.Nonce + 1,
-			Metadata:  acc.sessionCtx[i].Session.Metadata,
-		},
-		L1Owner: acc.GetAddress(),
-	}
-
-	typedData := types.ToTypedData(&sessionCtx.Session)
-	_, sigHash, _ := types.SignEip712(typedData)
-	sig, err := crypto.Sign(sigHash, acc.privateKey)
+	sessionCtx, err := acc.NewSessionDeleteCtx(i)
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx.L1Signature = sig
 
-	input, err := types.WrapTxAsInput(&sessionCtx)
+	signer := types.LatestSignerForChainID(chainID)
+	input, err := types.WrapTxAsInput(sessionCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -373,8 +393,35 @@ func (acc *Account) GenSessionDeleteTx(i int) (*types.Transaction, error) {
 	return tx, nil
 }
 
-// func (self *Account) GenTransferTx() (*types.Transaction, *ecdsa.PrivateKey, error) {
-// }
+func (acc *Account) GenTransferTx(to *Account, value *big.Int) (*types.Transaction, error) {
+	vtCtx, err := acc.NewValueTransferCtx(to, value)
+	if err != nil {
+		return nil, err
+	}
+
+	signer := types.LatestSignerForChainID(chainID)
+	input, err := types.WrapTxAsInput(vtCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := uint64(time.Now().UnixMilli()) + uint64(rand.Intn(2000)) - 1000 // timestamp nonce ± 1000
+	tx := types.NewTransaction(
+		nonce,
+		types.DexAddress,
+		common.Big0,
+		0,
+		common.Big0,
+		input,
+	)
+
+	tx, err = types.SignTx(tx, signer, acc.privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
 
 func (acc *Account) SendTx(c *ethclient.Client, tx *types.Transaction) (common.Hash, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)

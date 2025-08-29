@@ -580,3 +580,41 @@ func ConcurrentTransactionSend(accs []*Account, transactionSend func(*Account)) 
 	}
 	wg.Wait()
 }
+
+func ParallelDistribute(accs []*Account, from *Account, value *big.Int, sendTx func(from, to *Account, value *big.Int)) {
+	numChunks := 4
+	if len(accs) <= numChunks {
+		// Base case: distribute directly
+		for _, acc := range accs {
+			sendTx(from, acc, value)
+		}
+		return
+	}
+
+	// Divide-and-conquer case
+	chunkSize := (len(accs) + numChunks - 1) / numChunks
+	var wg sync.WaitGroup
+
+	for i := 0; i < numChunks; i++ {
+		start := i * chunkSize
+		end := min(start+chunkSize, len(accs))
+		chunkAccs := accs[start:end]
+
+		// Calculate total amount needed for child richAcc
+		chunkAmount := new(big.Int).Mul(value, big.NewInt(int64(len(chunkAccs))))
+
+		// Create intermediate account and fund it
+		richChild := NewAccount(0)
+		sendTx(from, richChild, chunkAmount)
+
+		// Process chunk in parallel
+		wg.Add(1)
+		go func(child *Account, accounts []*Account) {
+			defer wg.Done()
+			ParallelDistribute(chunkAccs, richChild, value, sendTx)
+		}(richChild, chunkAccs)
+	}
+
+	// Wait for all chunks to complete
+	wg.Wait()
+}

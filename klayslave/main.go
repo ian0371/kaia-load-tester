@@ -102,7 +102,18 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 	}
 
 	// 3. charge KAIA
-	log.Printf("Skip charging KLAY to test accounts")
+	if cfg.InTheTcList("transferTxTC") {
+		log.Printf("Start charging KLAY to test accounts because transferTxTC is enabled")
+		accs := accGrp.GetValidAccGrp()
+		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
+		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
+		account.ParallelDistribute(accs, localReservoirAccount, cfg.GetChargeValue(), func(from, to *account.Account, value *big.Int) {
+			from.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value)
+		})
+		log.Printf("Finished charging KLAY to %d test account(s)\n", len(accs))
+	} else {
+		log.Printf("Skip charging KLAY to test accounts")
+	}
 
 	// Wait, charge KAIA happen in 100% of all created test accounts
 	// But, from here including prepareTestContracts like MintERC721, only 20% of account happens

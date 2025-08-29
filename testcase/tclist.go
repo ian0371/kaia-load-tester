@@ -5,6 +5,7 @@ import (
 
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
 	"github.com/kaiachain/kaia-load-tester/testcase/sessionTxTC"
+	"github.com/kaiachain/kaia-load-tester/testcase/transferTxTC"
 )
 
 type ExtendedTask struct {
@@ -22,5 +23,11 @@ var TcList = map[string]*ExtendedTask{
 		Weight: 10,
 		Fn:     sessionTxTC.Run,
 		Init:   sessionTxTC.Init,
+	},
+	transferTxTC.Name: {
+		Name:   transferTxTC.Name,
+		Weight: 10,
+		Fn:     transferTxTC.Run,
+		Init:   transferTxTC.Init,
 	},
 }

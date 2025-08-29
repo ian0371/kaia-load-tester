@@ -194,7 +194,6 @@ func (acc *Account) NewSessionCreateCtx() (*types.SessionContext, *ecdsa.Private
 
 // NewSessionDeleteCtx creates a new session
 func (acc *Account) NewSessionDeleteCtx(i int) (*types.SessionContext, error) {
-	acc.timenonce++
 	target := acc.sessionCtx[i]
 	sessionAddr := target.Session.PublicKey
 	session := types.Session{
@@ -332,6 +331,7 @@ func (acc *Account) RegisterNewSession(c *ethclient.Client) error {
 func (acc *Account) GenSessionCreateTx() (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
+	acc.timenonce++
 
 	sessionCtx, sessionKey, err := acc.NewSessionCreateCtx()
 	if err != nil {
@@ -366,6 +366,7 @@ func (acc *Account) GenSessionCreateTx() (*types.Transaction, error) {
 func (acc *Account) GenSessionDeleteTx(i int) (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
+	acc.timenonce++
 
 	sessionCtx, err := acc.NewSessionDeleteCtx(i)
 	if err != nil {
@@ -395,6 +396,10 @@ func (acc *Account) GenSessionDeleteTx(i int) (*types.Transaction, error) {
 }
 
 func (acc *Account) GenTransferTx(to *Account, value *big.Int) (*types.Transaction, error) {
+	acc.mutex.Lock()
+	defer acc.mutex.Unlock()
+	acc.timenonce++
+
 	vtCtx, err := acc.NewValueTransferCtx(to, value)
 	if err != nil {
 		return nil, err

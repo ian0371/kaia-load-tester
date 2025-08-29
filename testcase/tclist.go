@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
-	"github.com/kaiachain/kaia-load-tester/testcase/dexTxSessionTC"
+	"github.com/kaiachain/kaia-load-tester/testcase/sessionTxTC"
 )
 
 type ExtendedTask struct {
@@ -17,10 +17,10 @@ type ExtendedTaskSet []*ExtendedTask
 
 // TcList initializes TCs and returns a slice of TCs.
 var TcList = map[string]*ExtendedTask{
-	"sessionTxTC": {
-		Name:   "sessionTxTC",
+	sessionTxTC.Name: {
+		Name:   sessionTxTC.Name,
 		Weight: 10,
-		Fn:     dexTxSessionTC.Run,
-		Init:   dexTxSessionTC.Init,
+		Fn:     sessionTxTC.Run,
+		Init:   sessionTxTC.Init,
 	},
 }

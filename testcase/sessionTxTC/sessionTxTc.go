@@ -1,4 +1,4 @@
-package dexTxSessionTC
+package sessionTxTC
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	"github.com/myzhan/boomer"
 )
 
-const Name = "dexTxSessionTC"
+const Name = "sessionTxTC"
 
 var (
 	endPoint string
@@ -72,11 +72,11 @@ func Run() {
 		return
 	}
 
-	for i, ret := range rets {
+	for _, ret := range rets {
 		if ret != nil && len(*ret) == 32 {
 			boomer.RecordSuccess("http", "SendSessionTx"+" to "+endPoint, elapsed, int64(10))
 		} else {
-			fmt.Printf("Failed to send session tx %v\n", txs[i])
+			fmt.Printf("Failed to send session tx %v\n", ret.String())
 			boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, ret.String())
 		}
 	}

@@ -170,54 +170,50 @@ func (acc *Account) NewSessionCreateCtx() (*types.SessionContext, *ecdsa.Private
 		return nil, nil, err
 	}
 	sessionAddr := crypto.PubkeyToAddress(sessionKey.PublicKey)
-
-	sessionCtx := types.SessionContext{
-		Command: types.SessionCreate,
-		Session: types.Session{
-			PublicKey: sessionAddr,
-			ExpiresAt: uint64(1000000),
-			Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
-			Metadata:  nil,
-		},
-		L1Owner: acc.GetAddress(),
+	session := types.Session{
+		PublicKey: sessionAddr,
+		ExpiresAt: uint64(1000000),
+		Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
+		Metadata:  nil,
 	}
-
-	typedData := types.ToTypedData(&sessionCtx.Session)
+	typedData := types.ToTypedData(&session)
 	_, sigHash, _ := types.SignEip712(typedData)
 	sig, err := crypto.Sign(sigHash, acc.privateKey)
 	if err != nil {
 		return nil, nil, err
 	}
-	sessionCtx.L1Signature = sig
 
-	return &sessionCtx, sessionKey, nil
+	return &types.SessionContext{
+		Command:     types.SessionCreate,
+		Session:     session,
+		L1Owner:     acc.GetAddress(),
+		L1Signature: sig,
+	}, sessionKey, nil
 }
 
 // NewSessionDeleteCtx creates a new session
 func (acc *Account) NewSessionDeleteCtx(i int) (*types.SessionContext, error) {
 	target := acc.sessionCtx[i]
-	sessionKey := acc.sessionKey[i]
 	sessionAddr := target.Session.PublicKey
-	sessionCtx := types.SessionContext{
-		Command: types.SessionDelete,
-		Session: types.Session{
-			PublicKey: sessionAddr,
-			ExpiresAt: target.Session.ExpiresAt,
-			Nonce:     target.Session.Nonce + 1,
-			Metadata:  target.Session.Metadata,
-		},
-		L1Owner: acc.GetAddress(),
+	session := types.Session{
+		PublicKey: sessionAddr,
+		ExpiresAt: uint64(1000000),
+		Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
+		Metadata:  nil,
 	}
-
-	typedData := types.ToTypedData(&sessionCtx.Session)
+	typedData := types.ToTypedData(&session)
 	_, sigHash, _ := types.SignEip712(typedData)
-	sig, err := crypto.Sign(sigHash, sessionKey)
+	sig, err := crypto.Sign(sigHash, acc.privateKey)
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx.L1Signature = sig
 
-	return &sessionCtx, nil
+	return &types.SessionContext{
+		Command:     types.SessionDelete,
+		Session:     session,
+		L1Owner:     acc.GetAddress(),
+		L1Signature: sig,
+	}, nil
 }
 
 // NewValueTransferCtx creates a new session

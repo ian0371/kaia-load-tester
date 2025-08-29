@@ -87,7 +87,7 @@ func GetAccountFromKey(id int, key string) *Account {
 		[]*ecdsa.PrivateKey{},
 		[]*types.SessionContext{},
 		0,
-		0,
+		uint64(time.Now().UnixMilli()),
 		big.NewInt(0),
 		sync.Mutex{},
 		// make(TransactionMap),
@@ -112,7 +112,7 @@ func NewAccount(id int) *Account {
 		[]*ecdsa.PrivateKey{},
 		[]*types.SessionContext{},
 		0,
-		0,
+		uint64(time.Now().UnixMilli()),
 		big.NewInt(0),
 		sync.Mutex{},
 		// make(TransactionMap),
@@ -194,8 +194,8 @@ func (acc *Account) NewSessionCreateCtx() (*types.SessionContext, *ecdsa.Private
 
 // NewSessionDeleteCtx creates a new session
 func (acc *Account) NewSessionDeleteCtx(i int) (*types.SessionContext, error) {
-	target := acc.sessionCtx[i]
 	acc.timenonce++
+	target := acc.sessionCtx[i]
 	sessionAddr := target.Session.PublicKey
 	session := types.Session{
 		PublicKey: sessionAddr,
@@ -404,12 +404,6 @@ func (acc *Account) GenTransferTx(to *Account, value *big.Int) (*types.Transacti
 	input, err := types.WrapTxAsInput(vtCtx)
 	if err != nil {
 		return nil, err
-	}
-
-	if acc.timenonce == 0 {
-		acc.timenonce = uint64(time.Now().UnixMilli())
-	} else {
-		acc.timenonce++
 	}
 
 	tx := types.NewTransaction(

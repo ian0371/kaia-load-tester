@@ -25,11 +25,11 @@ func TestParallelDistribute(t *testing.T) {
 	}
 
 	t.Logf("rich: %s, balance: %d", rich.GetAddress().Hex(), balanceMap[rich.GetAddress()])
-	ParallelDistribute(accs, rich, value, func(from, to *Account, value *big.Int) {
+	HierarchicalDistribute(accs, rich, value, func(from, to *Account, value *big.Int) {
 		if from == nil || to == nil || value == nil {
 			t.Fatalf("all must not be nil, from: %v, to: %v, value: %v", from, to, value)
 		}
-		t.Logf("from: %s, to: %s, value: %d", from.GetAddress().Hex(), to.GetAddress().Hex(), value)
+		t.Logf("from: %s, to: %s, value: %d", from.GetAddress().Hex(), to.GetAddress().Hex(), value.Uint64())
 		mu.Lock()
 		if balanceMap[from.GetAddress()] < value.Uint64() {
 			t.Fatalf("balance of %s is %d, but need to transfer %d", from.GetAddress().Hex(), balanceMap[from.GetAddress()], value.Uint64())

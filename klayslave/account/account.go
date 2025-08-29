@@ -586,7 +586,9 @@ func ConcurrentTransactionSend(accs []*Account, transactionSend func(*Account)) 
 	wg.Wait()
 }
 
-func ParallelDistribute(accs []*Account, from *Account, value *big.Int, sendTx func(from, to *Account, value *big.Int)) {
+// HierarchicalDistribute calls sendTx in a hierarchical manner where each child can be parallelized.
+// rich -> richChild -> richChildChild -> ... -> accs[0..n]
+func HierarchicalDistribute(accs []*Account, from *Account, value *big.Int, sendTx func(from, to *Account, value *big.Int)) {
 	numChunks := 4
 	if len(accs) <= numChunks {
 		// Base case: distribute directly
@@ -616,7 +618,7 @@ func ParallelDistribute(accs []*Account, from *Account, value *big.Int, sendTx f
 		wg.Add(1)
 		go func(child *Account, accounts []*Account) {
 			defer wg.Done()
-			ParallelDistribute(chunkAccs, richChild, value, sendTx)
+			HierarchicalDistribute(chunkAccs, richChild, value, sendTx)
 		}(richChild, chunkAccs)
 	}
 

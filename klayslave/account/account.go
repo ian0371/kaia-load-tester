@@ -3,7 +3,6 @@ package account
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -35,9 +34,10 @@ var (
 
 type Account struct {
 	id         int
-	privateKey []*ecdsa.PrivateKey
-	key        []string
+	privateKey *ecdsa.PrivateKey
 	address    common.Address
+	sessionKey []*ecdsa.PrivateKey
+	sessionCtx []*types.SessionContext // not nil once session is registered
 	nonce      uint64
 	balance    *big.Int
 	mutex      sync.Mutex
@@ -81,9 +81,10 @@ func GetAccountFromKey(id int, key string) *Account {
 
 	tAcc := Account{
 		0,
-		[]*ecdsa.PrivateKey{acc},
-		[]string{key},
+		acc,
 		crypto.PubkeyToAddress(acc.PublicKey),
+		[]*ecdsa.PrivateKey{},
+		[]*types.SessionContext{},
 		0,
 		big.NewInt(0),
 		sync.Mutex{},
@@ -93,7 +94,7 @@ func GetAccountFromKey(id int, key string) *Account {
 	return &tAcc
 }
 
-func (account *Account) ImportUnLockAccount(endpoint string) {
+func (acc *Account) ImportUnLockAccount(endpoint string) {
 }
 
 func NewAccount(id int) *Account {
@@ -102,13 +103,12 @@ func NewAccount(id int) *Account {
 		log.Fatalf("crypto.GenerateKey() : Failed to generateKey %v", err)
 	}
 
-	testKey := hex.EncodeToString(crypto.FromECDSA(acc))
-
 	tAcc := Account{
 		0,
-		[]*ecdsa.PrivateKey{acc},
-		[]string{testKey},
+		acc,
 		crypto.PubkeyToAddress(acc.PublicKey),
+		[]*ecdsa.PrivateKey{},
+		[]*types.SessionContext{},
 		0,
 		big.NewInt(0),
 		sync.Mutex{},
@@ -116,96 +116,10 @@ func NewAccount(id int) *Account {
 	}
 
 	return &tAcc
-}
-
-func NewKaiaAccount(id int) *Account {
-	acc, err := crypto.GenerateKey()
-	if err != nil {
-		log.Fatalf("crypto.GenerateKey() : Failed to generateKey %v", err)
-	}
-
-	testKey := hex.EncodeToString(crypto.FromECDSA(acc))
-
-	randomAddr := common.BytesToAddress(crypto.Keccak256([]byte(testKey))[12:])
-
-	tAcc := Account{
-		0,
-		[]*ecdsa.PrivateKey{acc},
-		[]string{testKey},
-		randomAddr,
-		0,
-		big.NewInt(0),
-		sync.Mutex{},
-		// make(TransactionMap),
-	}
-
-	return &tAcc
-}
-
-func NewKaiaAccountWithAddr(id int, addr common.Address) *Account {
-	acc, err := crypto.GenerateKey()
-	if err != nil {
-		log.Fatalf("crypto.GenerateKey() : Failed to generateKey %v", err)
-	}
-
-	testKey := hex.EncodeToString(crypto.FromECDSA(acc))
-
-	tAcc := Account{
-		0,
-		[]*ecdsa.PrivateKey{acc},
-		[]string{testKey},
-		addr,
-		0,
-		big.NewInt(0),
-		sync.Mutex{},
-		// make(TransactionMap),
-	}
-
-	return &tAcc
-}
-
-func NewKaiaMultisigAccount(id int) *Account {
-	k1, err := crypto.GenerateKey()
-	if err != nil {
-		log.Fatalf("crypto.GenerateKey() : Failed to generateKey %v", err)
-	}
-	k2, err := crypto.GenerateKey()
-	if err != nil {
-		log.Fatalf("crypto.GenerateKey() : Failed to generateKey %v", err)
-	}
-	k3, err := crypto.GenerateKey()
-	if err != nil {
-		log.Fatalf("crypto.GenerateKey() : Failed to generateKey %v", err)
-	}
-
-	testKey := hex.EncodeToString(crypto.FromECDSA(k1))
-
-	randomAddr := common.BytesToAddress(crypto.Keccak256([]byte(testKey))[12:])
-
-	tAcc := Account{
-		0,
-		[]*ecdsa.PrivateKey{k1, k2, k3},
-		[]string{testKey},
-		randomAddr,
-		0,
-		big.NewInt(0),
-		sync.Mutex{},
-		// make(TransactionMap),
-	}
-
-	return &tAcc
-}
-
-func (acc *Account) GetKey() *ecdsa.PrivateKey {
-	return acc.privateKey[0]
 }
 
 func (acc *Account) GetAddress() common.Address {
 	return acc.address
-}
-
-func (acc *Account) GetPrivateKey() string {
-	return acc.key[0]
 }
 
 func (acc *Account) GetNonce(c *ethclient.Client) uint64 {
@@ -238,18 +152,55 @@ func (acc *Account) GetNonceFromBlock(c *ethclient.Client) uint64 {
 	return acc.nonce
 }
 
+func (acc *Account) GetSessionCtx() []*types.SessionContext {
+	return acc.sessionCtx
+}
+
 func (acc *Account) UpdateNonce() {
 	acc.nonce++
 }
 
-func (a *Account) GetReceipt(c *ethclient.Client, txHash common.Hash) (*types.Receipt, error) {
+// NewSession creates a new session, appends it to the account, and returns the index
+func (acc *Account) NewSession() (int, error) {
+	sessionKey, err := crypto.GenerateKey()
+	if err != nil {
+		return -1, err
+	}
+	sessionAddr := crypto.PubkeyToAddress(sessionKey.PublicKey)
+
+	sessionCtx := types.SessionContext{
+		Command: types.SessionCreate,
+		Session: types.Session{
+			PublicKey: sessionAddr,
+			ExpiresAt: uint64(1000000),
+			Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
+			Metadata:  nil,
+		},
+		L1Owner: acc.GetAddress(),
+	}
+
+	typedData := types.ToTypedData(&sessionCtx.Session)
+	_, sigHash, _ := types.SignEip712(typedData)
+	sig, err := crypto.Sign(sigHash, acc.privateKey)
+	if err != nil {
+		return -1, err
+	}
+	sessionCtx.L1Signature = sig
+
+	acc.sessionKey = append(acc.sessionKey, sessionKey)
+	acc.sessionCtx = append(acc.sessionCtx, &sessionCtx)
+
+	return len(acc.sessionKey) - 1, nil
+}
+
+func (acc *Account) GetReceipt(c *ethclient.Client, txHash common.Hash) (*types.Receipt, error) {
 	ctx := context.Background()
 	return c.TransactionReceipt(ctx, txHash)
 }
 
-func (a *Account) GetBalance(c *ethclient.Client) (*big.Int, error) {
+func (acc *Account) GetBalance(c *ethclient.Client) (*big.Int, error) {
 	ctx := context.Background()
-	balance, err := c.BalanceAt(ctx, a.GetAddress(), nil)
+	balance, err := c.BalanceAt(ctx, acc.GetAddress(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -258,20 +209,20 @@ func (a *Account) GetBalance(c *ethclient.Client) (*big.Int, error) {
 
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-func (self *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client, to *Account, value *big.Int) (*types.Transaction, *big.Int, error) {
+func (acc *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client, to *Account, value *big.Int) (*types.Transaction, *big.Int, error) {
 	if withLock {
-		self.mutex.Lock()
-		defer self.mutex.Unlock()
+		acc.mutex.Lock()
+		defer acc.mutex.Unlock()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	nonce, err := c.NonceAt(ctx, self.GetAddress(), nil)
+	nonce, err := c.NonceAt(ctx, acc.GetAddress(), nil)
 	if err != nil {
 		return nil, big.NewInt(0), err
 	}
-	self.nonce = nonce
+	acc.nonce = nonce
 
 	tx := types.NewTransaction(
 		nonce,
@@ -283,7 +234,7 @@ func (self *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client
 	gasPrice := tx.GasPrice()
 
 	signer := types.LatestSignerForChainID(chainID)
-	tx, err = types.SignTx(tx, signer, self.privateKey[0])
+	tx, err = types.SignTx(tx, signer, acc.privateKey)
 	if err != nil {
 		return nil, gasPrice, err
 	}
@@ -292,21 +243,21 @@ func (self *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client
 		return tx, gasPrice, err
 	}
 
-	self.nonce++
+	acc.nonce++
 
 	// fmt.Printf("%v transferSignedTx %v klay to %v klay.\n", self.GetAddress().Hex(), to.GetAddress().Hex(), value)
 
 	return tx, gasPrice, nil
 }
 
-func (self *Account) TransferSignedTxWithGuaranteeRetry(c *ethclient.Client, to *Account, value *big.Int) *types.Transaction {
+func (acc *Account) TransferSignedTxWithGuaranteeRetry(c *ethclient.Client, to *Account, value *big.Int) *types.Transaction {
 	var (
 		err    error
 		lastTx *types.Transaction
 	)
 
 	for {
-		lastTx, _, err = self.TransferSignedTxReturnTx(true, c, to, value)
+		lastTx, _, err = acc.TransferSignedTxReturnTx(true, c, to, value)
 		// TODO-kaia-load-tester: return error if the error isn't able to handle
 		if err == nil {
 			break // Succeed, let's break the loop
@@ -328,80 +279,32 @@ func (self *Account) TransferSignedTxWithGuaranteeRetry(c *ethclient.Client, to 
 	return lastTx
 }
 
-func (self *Account) GenSessionCreateTx() (*types.Transaction, *types.SessionContext, *ecdsa.PrivateKey, error) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
-
-	signer := types.LatestSignerForChainID(chainID)
-
-	ephemeralKey, _ := crypto.GenerateKey()
-	ephemeralAddr := crypto.PubkeyToAddress(ephemeralKey.PublicKey)
-	sessionCtx := types.SessionContext{
-		Command: types.SessionCreate,
-		Session: types.Session{
-			PublicKey: ephemeralAddr,
-			ExpiresAt: uint64(1000000),
-			Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
-			Metadata:  nil,
-		},
-		L1Owner: self.GetAddress(),
-	}
-
-	typedData := types.ToTypedData(&sessionCtx.Session)
-	_, sigHash, _ := types.SignEip712(typedData)
-	sig, err := crypto.Sign(sigHash, self.privateKey[0])
+func (acc *Account) RegisterNewSession(c *ethclient.Client) error {
+	tx, err := acc.GenSessionCreateTx()
 	if err != nil {
-		return nil, &sessionCtx, ephemeralKey, err
+		return err
 	}
-	sessionCtx.L1Signature = sig
 
-	input, err := types.WrapTxAsInput(&sessionCtx)
+	_, err = acc.SendTx(c, tx)
 	if err != nil {
-		return nil, &sessionCtx, ephemeralKey, err
+		return err
 	}
 
-	tx := types.NewTransaction(
-		sessionCtx.Session.Nonce,
-		types.DexAddress,
-		common.Big0,
-		0,
-		common.Big0,
-		input,
-	)
-
-	tx, err = types.SignTx(tx, signer, ephemeralKey)
-	if err != nil {
-		return nil, &sessionCtx, ephemeralKey, err
-	}
-	return tx, &sessionCtx, ephemeralKey, nil
+	return nil
 }
 
-func (self *Account) GenSessionDeleteTx(target *types.SessionContext, sessionKey *ecdsa.PrivateKey) (*types.Transaction, error) {
-	self.mutex.Lock()
-	defer self.mutex.Unlock()
+func (acc *Account) GenSessionCreateTx() (*types.Transaction, error) {
+	acc.mutex.Lock()
+	defer acc.mutex.Unlock()
 
-	signer := types.LatestSignerForChainID(chainID)
-
-	sessionCtx := types.SessionContext{
-		Command: types.SessionDelete,
-		Session: types.Session{
-			PublicKey: target.Session.PublicKey,
-			ExpiresAt: target.Session.ExpiresAt,
-			Nonce:     target.Session.Nonce + 1,
-			Metadata:  target.Session.Metadata,
-		},
-		L1Owner: self.GetAddress(),
-	}
-
-	typedData := types.ToTypedData(&sessionCtx.Session)
-	_, sigHash, _ := types.SignEip712(typedData)
-	sig, err := crypto.Sign(sigHash, self.privateKey[0])
+	i, err := acc.NewSession()
 	if err != nil {
 		return nil, err
 	}
-	sessionCtx.L1Signature = sig
 
-	input, err := types.WrapTxAsInput(&sessionCtx)
+	sessionCtx := acc.sessionCtx[i]
+
+	input, err := types.WrapTxAsInput(sessionCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -415,14 +318,65 @@ func (self *Account) GenSessionDeleteTx(target *types.SessionContext, sessionKey
 		input,
 	)
 
-	tx, err = types.SignTx(tx, signer, sessionKey)
+	signer := types.LatestSignerForChainID(chainID)
+	tx, err = types.SignTx(tx, signer, acc.sessionKey[i])
 	if err != nil {
 		return nil, err
 	}
 	return tx, nil
 }
 
-func (self *Account) SendTx(c *ethclient.Client, tx *types.Transaction) (common.Hash, error) {
+func (acc *Account) GenSessionDeleteTx(i int) (*types.Transaction, error) {
+	acc.mutex.Lock()
+	defer acc.mutex.Unlock()
+
+	signer := types.LatestSignerForChainID(chainID)
+
+	sessionAddr := crypto.PubkeyToAddress(acc.sessionKey[i].PublicKey)
+	sessionCtx := types.SessionContext{
+		Command: types.SessionDelete,
+		Session: types.Session{
+			PublicKey: sessionAddr,
+			ExpiresAt: acc.sessionCtx[i].Session.ExpiresAt,
+			Nonce:     acc.sessionCtx[i].Session.Nonce + 1,
+			Metadata:  acc.sessionCtx[i].Session.Metadata,
+		},
+		L1Owner: acc.GetAddress(),
+	}
+
+	typedData := types.ToTypedData(&sessionCtx.Session)
+	_, sigHash, _ := types.SignEip712(typedData)
+	sig, err := crypto.Sign(sigHash, acc.privateKey)
+	if err != nil {
+		return nil, err
+	}
+	sessionCtx.L1Signature = sig
+
+	input, err := types.WrapTxAsInput(&sessionCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(
+		sessionCtx.Session.Nonce,
+		types.DexAddress,
+		common.Big0,
+		0,
+		common.Big0,
+		input,
+	)
+
+	tx, err = types.SignTx(tx, signer, acc.sessionKey[i])
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+// func (self *Account) GenTransferTx() (*types.Transaction, *ecdsa.PrivateKey, error) {
+// }
+
+func (acc *Account) SendTx(c *ethclient.Client, tx *types.Transaction) (common.Hash, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
@@ -434,7 +388,7 @@ func (self *Account) SendTx(c *ethclient.Client, tx *types.Transaction) (common.
 	return tx.Hash(), nil
 }
 
-func (self *Account) SendTxBatch(c *ethclient.Client, txs []*types.Transaction) ([]*hexutil.Bytes, error) {
+func (acc *Account) SendTxBatch(c *ethclient.Client, txs []*types.Transaction) ([]*hexutil.Bytes, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
@@ -555,10 +509,10 @@ func (self *Account) CheckReceiptsBatch(c *ethclient.Client, txHashes []common.H
 }
 */
 
-func (a *Account) CheckBalance(expectedBalance *big.Int, cli *ethclient.Client) error {
-	balance, _ := a.GetBalance(cli)
+func (acc *Account) CheckBalance(expectedBalance *big.Int, cli *ethclient.Client) error {
+	balance, _ := acc.GetBalance(cli)
 	if balance.Cmp(expectedBalance) != 0 {
-		fmt.Println(a.address.String() + " expected : " + expectedBalance.Text(10) + " actual : " + balance.Text(10))
+		fmt.Println(acc.address.String() + " expected : " + expectedBalance.Text(10) + " actual : " + balance.Text(10))
 		return errors.New("expected : " + expectedBalance.Text(10) + " actual : " + balance.Text(10))
 	}
 

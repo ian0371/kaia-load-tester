@@ -54,12 +54,13 @@ func Run() {
 
 	from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 
-	// create session
-	sessionCreatetx, sessionCtx, sessionKey, err := from.GenSessionCreateTx()
+	// create a new session
+	sessionCreatetx, err := from.GenSessionCreateTx()
 	if err != nil {
 		return
 	}
-	sessionDeleteTx, err := from.GenSessionDeleteTx(sessionCtx, sessionKey)
+	// delete the last session
+	sessionDeleteTx, err := from.GenSessionDeleteTx(len(from.GetSessionCtx()) - 1)
 	if err != nil {
 		return
 	}

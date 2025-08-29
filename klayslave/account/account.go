@@ -169,11 +169,12 @@ func (acc *Account) NewSessionCreateCtx() (*types.SessionContext, *ecdsa.Private
 	if err != nil {
 		return nil, nil, err
 	}
+	acc.timenonce++
 	sessionAddr := crypto.PubkeyToAddress(sessionKey.PublicKey)
 	session := types.Session{
 		PublicKey: sessionAddr,
 		ExpiresAt: uint64(1000000),
-		Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
+		Nonce:     acc.timenonce,
 		Metadata:  nil,
 	}
 	typedData := types.ToTypedData(&session)
@@ -194,11 +195,12 @@ func (acc *Account) NewSessionCreateCtx() (*types.SessionContext, *ecdsa.Private
 // NewSessionDeleteCtx creates a new session
 func (acc *Account) NewSessionDeleteCtx(i int) (*types.SessionContext, error) {
 	target := acc.sessionCtx[i]
+	acc.timenonce++
 	sessionAddr := target.Session.PublicKey
 	session := types.Session{
 		PublicKey: sessionAddr,
 		ExpiresAt: uint64(1000000),
-		Nonce:     uint64(time.Now().UnixMilli()), // timestamp nonce
+		Nonce:     acc.timenonce,
 		Metadata:  nil,
 	}
 	typedData := types.ToTypedData(&session)

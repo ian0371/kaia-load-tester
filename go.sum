@@ -230,8 +230,8 @@ github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
-github.com/kaiachain/go-ethereum v0.0.0-20250819083917-e3fc3f5ccd3f h1:yV29HyihrWnjcOXVBV7IkJZzvTKf/xVgdwesbpHtmJ8=
-github.com/kaiachain/go-ethereum v0.0.0-20250819083917-e3fc3f5ccd3f/go.mod h1:u+5YBBfMG7I9P2cfW4D9w1GlKr49bm07vq9yNU2a4SI=
+github.com/kaiachain/go-ethereum v0.0.0-20250829180906-fcb0195f356d h1:qXTTygoyZEEyPghIhgU9UKGb2bJDbSbLYu97JBAD9Jw=
+github.com/kaiachain/go-ethereum v0.0.0-20250829180906-fcb0195f356d/go.mod h1:u+5YBBfMG7I9P2cfW4D9w1GlKr49bm07vq9yNU2a4SI=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.16.0 h1:iULayQNOReoYUe+1qtKOqw9CwJv3aNQu8ivo7lw1HU4=

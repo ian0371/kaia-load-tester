@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/holiman/uint256"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
 	"github.com/kaiachain/kaia-load-tester/klayslave/clipool"
 	"github.com/myzhan/boomer"
@@ -50,18 +51,20 @@ func Run() {
 	defer cliPool.Free(cli)
 
 	var (
-		from        = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		baseToken   = "2"
-		quoteToken  = "3"
-		minTickSize = 10000000000
-		price       = big.NewInt(int64(minTickSize * (rand.Intn(5) + 3)))
-		quantity    = big.NewInt(int64(rand.Intn(5) + 1))
-		side        = uint8(rand.Intn(2))
-		orderType   = uint8(0)
+		from           = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
+		baseToken      = "2"
+		quoteToken     = "3"
+		base           = uint256.NewInt(uint64(1e18)) // 0.3-0.7
+		priceOffset    = uint256.NewInt(uint64(rand.Intn(5) + 3))
+		quantityOffset = uint256.NewInt(uint64(rand.Intn(5) + 3))
+		price          = new(uint256.Int).Mul(base, priceOffset) // 3-7
+		quantity       = new(uint256.Int).Mul(base, quantityOffset)
+		side           = uint8(rand.Intn(2))
+		orderType      = uint8(0)
 	)
 
 	start := boomer.Now()
-	tx, err := from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
+	tx, err := from.GenNewOrderTx(baseToken, quoteToken, side, price.ToBig(), quantity.ToBig(), orderType)
 	if err != nil {
 		log.Printf("Failed to generate new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)

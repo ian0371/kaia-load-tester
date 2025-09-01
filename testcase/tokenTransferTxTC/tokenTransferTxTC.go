@@ -62,13 +62,13 @@ func Run() {
 	value := big.NewInt(int64(rand.Intn(5) + 1))
 	tx, err := from.GenTokenTransferTx(to, value, "0x0000000000000000000000000000000000000000")
 	if err != nil {
-		fmt.Printf("Failed to generate transfer tx: %v\n", err.Error())
+		fmt.Printf("Failed to generate token transfer tx: %v\n", err.Error())
 		return
 	}
 	_, err = from.SendTx(cli, tx)
 	elapsed := boomer.Now() - start
 	if err != nil {
-		fmt.Printf("Failed to send transfer tx: %v\n", err.Error())
+		fmt.Printf("Failed to send token transfer tx: %v\n", err.Error())
 		boomer.RecordFailure("http", "SendTransferTx"+" to "+endPoint, elapsed, err.Error())
 		return
 	}

@@ -339,7 +339,7 @@ func (acc *Account) TransferTokenSignedTxWithGuaranteeRetry(c *ethclient.Client,
 		}
 		_, err = acc.SendTx(c, tx)
 		if err != nil {
-			log.Printf("Failed to send token transfer tx %s: %v", tx.Hash().String(), err.Error())
+			log.Printf("Failed to send token transfer tx %v: %v", tx, err.Error())
 			continue
 		}
 		receipt, err := c.TransactionReceipt(context.Background(), tx.Hash())

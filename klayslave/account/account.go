@@ -238,11 +238,17 @@ func (acc *Account) NewTokenTransferCtx(to *Account, value *big.Int, token strin
 	return &ctx, nil
 }
 
-func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType int) (*types.OrderContext, error) {
+func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType uint8) (*types.OrderContext, error) {
 	ctx := types.OrderContext{
 		L1Owner:    acc.GetAddress(),
 		BaseToken:  baseToken,
 		QuoteToken: quoteToken,
+		Side:       side,
+		Price:      price,
+		Quantity:   quantity,
+		OrderType:  orderType,
+		OrderMode:  0,
+		TPSL:       nil,
 	}
 
 	return &ctx, nil
@@ -273,14 +279,14 @@ func (acc *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client,
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	nonce, err := c.NonceAt(ctx, acc.GetAddress(), nil)
+	nonce, err := c.PendingNonceAt(ctx, acc.GetAddress())
 	if err != nil {
 		return nil, big.NewInt(0), err
 	}
-	acc.nonce = nonce
+	acc.nonce = uint64(nonce)
 
 	tx := types.NewTransaction(
-		nonce,
+		acc.nonce,
 		to.GetAddress(),
 		value,
 		21000,
@@ -516,7 +522,7 @@ func (acc *Account) GenTokenTransferTx(to *Account, value *big.Int, token string
 	return tx, nil
 }
 
-func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType int) (*types.Transaction, error) {
+func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType uint8) (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
 	acc.timenonce++

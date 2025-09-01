@@ -56,7 +56,7 @@ func Run() {
 		price      = big.NewInt(int64(rand.Intn(5) + 3))
 		quantity   = big.NewInt(int64(rand.Intn(5) + 1))
 		side       = uint8(rand.Intn(2))
-		orderType  = 0
+		orderType  = uint8(0)
 	)
 
 	start := boomer.Now()

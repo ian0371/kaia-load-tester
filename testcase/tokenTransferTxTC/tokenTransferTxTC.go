@@ -60,7 +60,7 @@ func Run() {
 
 	start := boomer.Now()
 	value := big.NewInt(int64(rand.Intn(5) + 1))
-	tx, err := from.GenTokenTransferTx(to, value, "0x0000000000000000000000000000000000000000")
+	tx, err := from.GenTokenTransferTx(to, value, "4")
 	if err != nil {
 		fmt.Printf("Failed to generate token transfer tx: %v\n", err.Error())
 		return

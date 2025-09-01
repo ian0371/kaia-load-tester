@@ -353,7 +353,6 @@ func (acc *Account) TransferTokenSignedTxWithGuaranteeRetry(c *ethclient.Client,
 			continue
 		}
 
-		log.Printf("Token transfer tx is successful")
 		break
 	}
 

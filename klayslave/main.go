@@ -131,7 +131,7 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 			account.HierarchicalDistribute(accs, localReservoirAccount, big.NewInt(1e9), func(from, to *account.Account, value *big.Int) {
 				from.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value, token)
 			})
-			log.Printf("Finished charging Token %s to %d test account(s)\n", token, len(accs))
+			log.Printf("Finished charging Token \"%s\" to %d test account(s)\n", token, len(accs))
 		}
 	} else {
 		log.Printf("Skip charging KLAY to test accounts")

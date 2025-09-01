@@ -345,6 +345,10 @@ func (acc *Account) TransferTokenSignedTxWithGuaranteeRetry(c *ethclient.Client,
 		tx  *types.Transaction
 	)
 
+	if acc.timenonce == 0 {
+		acc.timenonce = uint64(time.Now().UnixMilli())
+	}
+
 	for {
 		time.Sleep(1 * time.Second)
 		tx, err = acc.GenTokenTransferTx(to, value, token)

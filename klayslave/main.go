@@ -128,7 +128,7 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
 		for _, token := range []string{"2", "3", "4", "5", "6", "7", "8", "9", "10"} {
-			account.HierarchicalDistribute(accs, localReservoirAccount, big.NewInt(1e9), func(from, to *account.Account, value *big.Int) {
+			account.HierarchicalDistribute(accs, localReservoirAccount, big.NewInt(1e15), func(from, to *account.Account, value *big.Int) {
 				from.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value, token)
 			})
 			log.Printf("Finished charging Token \"%s\" to %d test account(s)\n", token, len(accs))

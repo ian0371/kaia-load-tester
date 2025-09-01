@@ -50,13 +50,14 @@ func Run() {
 	defer cliPool.Free(cli)
 
 	var (
-		from       = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		baseToken  = "2"
-		quoteToken = "3"
-		price      = big.NewInt(int64(rand.Intn(5) + 3))
-		quantity   = big.NewInt(int64(rand.Intn(5) + 1))
-		side       = uint8(rand.Intn(2))
-		orderType  = uint8(0)
+		from        = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
+		baseToken   = "2"
+		quoteToken  = "3"
+		minTickSize = 10000000000
+		price       = big.NewInt(int64(minTickSize * (rand.Intn(5) + 3)))
+		quantity    = big.NewInt(int64(rand.Intn(5) + 1))
+		side        = uint8(rand.Intn(2))
+		orderType   = uint8(0)
 	)
 
 	start := boomer.Now()

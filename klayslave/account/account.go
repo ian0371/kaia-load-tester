@@ -517,6 +517,10 @@ func (acc *Account) GenTokenTransferTx(to *Account, value *big.Int, token string
 }
 
 func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType int) (*types.Transaction, error) {
+	acc.mutex.Lock()
+	defer acc.mutex.Unlock()
+	acc.timenonce++
+
 	ctx, err := acc.NewOrderCtx(baseToken, quoteToken, side, price, quantity, orderType)
 	if err != nil {
 		return nil, err

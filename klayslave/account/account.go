@@ -164,17 +164,16 @@ func (acc *Account) UpdateNonce() {
 }
 
 // NewSessionCreateCtx creates a new session
-func (acc *Account) NewSessionCreateCtx() (*types.SessionContext, *ecdsa.PrivateKey, error) {
+func (acc *Account) NewSessionCreateCtx(expiresAt uint64, nonce uint64) (*types.SessionContext, *ecdsa.PrivateKey, error) {
 	sessionKey, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, nil, err
 	}
-	acc.timenonce++
 	sessionAddr := crypto.PubkeyToAddress(sessionKey.PublicKey)
 	session := types.Session{
 		PublicKey: sessionAddr,
-		ExpiresAt: uint64(1000000),
-		Nonce:     acc.timenonce,
+		ExpiresAt: expiresAt,
+		Nonce:     nonce,
 		Metadata:  nil,
 	}
 	typedData := types.ToTypedData(&session)
@@ -193,13 +192,13 @@ func (acc *Account) NewSessionCreateCtx() (*types.SessionContext, *ecdsa.Private
 }
 
 // NewSessionDeleteCtx creates a new session
-func (acc *Account) NewSessionDeleteCtx(i int) (*types.SessionContext, error) {
+func (acc *Account) NewSessionDeleteCtx(i int, nonce uint64) (*types.SessionContext, error) {
 	target := acc.sessionCtx[i]
 	sessionAddr := target.Session.PublicKey
 	session := types.Session{
 		PublicKey: sessionAddr,
-		ExpiresAt: uint64(1000000),
-		Nonce:     acc.timenonce,
+		ExpiresAt: target.Session.ExpiresAt,
+		Nonce:     nonce,
 		Metadata:  nil,
 	}
 	typedData := types.ToTypedData(&session)
@@ -217,17 +216,17 @@ func (acc *Account) NewSessionDeleteCtx(i int) (*types.SessionContext, error) {
 	}, nil
 }
 
-func (acc *Account) NewValueTransferCtx(to *Account, value *big.Int) (*types.ValueTransferContext, error) {
+func (acc *Account) NewValueTransferCtx(to *Account, value *big.Int) *types.ValueTransferContext {
 	vtCtx := types.ValueTransferContext{
 		L1Owner: acc.GetAddress(),
 		To:      to.GetAddress(),
 		Value:   value,
 	}
 
-	return &vtCtx, nil
+	return &vtCtx
 }
 
-func (acc *Account) NewTokenTransferCtx(to *Account, value *big.Int, token string) (*types.TokenTransferContext, error) {
+func (acc *Account) NewTokenTransferCtx(to *Account, value *big.Int, token string) *types.TokenTransferContext {
 	ctx := types.TokenTransferContext{
 		L1Owner: acc.GetAddress(),
 		To:      to.GetAddress(),
@@ -235,10 +234,10 @@ func (acc *Account) NewTokenTransferCtx(to *Account, value *big.Int, token strin
 		Token:   token,
 	}
 
-	return &ctx, nil
+	return &ctx
 }
 
-func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType uint8) (*types.OrderContext, error) {
+func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType uint8) *types.OrderContext {
 	ctx := types.OrderContext{
 		L1Owner:    acc.GetAddress(),
 		BaseToken:  baseToken,
@@ -251,7 +250,7 @@ func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side uint8,
 		TPSL:       nil,
 	}
 
-	return &ctx, nil
+	return &ctx
 }
 
 func (acc *Account) GetReceipt(c *ethclient.Client, txHash common.Hash) (*types.Receipt, error) {
@@ -394,7 +393,7 @@ func (acc *Account) GenSessionCreateTx() (*types.Transaction, error) {
 	defer acc.mutex.Unlock()
 	acc.timenonce++
 
-	sessionCtx, sessionKey, err := acc.NewSessionCreateCtx()
+	sessionCtx, sessionKey, err := acc.NewSessionCreateCtx(uint64(1000000), acc.timenonce)
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +428,7 @@ func (acc *Account) GenSessionDeleteTx(i int) (*types.Transaction, error) {
 	defer acc.mutex.Unlock()
 	acc.timenonce++
 
-	sessionCtx, err := acc.NewSessionDeleteCtx(i)
+	sessionCtx, err := acc.NewSessionDeleteCtx(i, acc.timenonce)
 	if err != nil {
 		return nil, err
 	}
@@ -461,13 +460,10 @@ func (acc *Account) GenTransferTx(to *Account, value *big.Int) (*types.Transacti
 	defer acc.mutex.Unlock()
 	acc.timenonce++
 
-	vtCtx, err := acc.NewValueTransferCtx(to, value)
-	if err != nil {
-		return nil, err
-	}
+	ctx := acc.NewValueTransferCtx(to, value)
 
 	signer := types.LatestSignerForChainID(chainID)
-	input, err := types.WrapTxAsInput(vtCtx)
+	input, err := types.WrapTxAsInput(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -494,13 +490,10 @@ func (acc *Account) GenTokenTransferTx(to *Account, value *big.Int, token string
 	defer acc.mutex.Unlock()
 	acc.timenonce++
 
-	vtCtx, err := acc.NewTokenTransferCtx(to, value, token)
-	if err != nil {
-		return nil, err
-	}
+	ctx := acc.NewTokenTransferCtx(to, value, token)
 
 	signer := types.LatestSignerForChainID(chainID)
-	input, err := types.WrapTxAsInput(vtCtx)
+	input, err := types.WrapTxAsInput(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -527,10 +520,7 @@ func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side uint
 	defer acc.mutex.Unlock()
 	acc.timenonce++
 
-	ctx, err := acc.NewOrderCtx(baseToken, quoteToken, side, price, quantity, orderType)
-	if err != nil {
-		return nil, err
-	}
+	ctx := acc.NewOrderCtx(baseToken, quoteToken, side, price, quantity, orderType)
 
 	signer := types.LatestSignerForChainID(chainID)
 	input, err := types.WrapTxAsInput(ctx)

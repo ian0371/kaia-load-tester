@@ -349,22 +349,26 @@ func (acc *Account) TransferTokenSignedTxWithGuaranteeRetry(c *ethclient.Client,
 		time.Sleep(1 * time.Second)
 		tx, err = acc.GenTokenTransferTx(to, value, token)
 		if err != nil {
-			log.Printf("Failed to generate token transfer tx: %v", err.Error())
+			log.Printf("Failed to generate token transfer: err=%v, from=%v, to=%v, value=%v, token=%v",
+				err.Error(), acc.GetAddress().String(), to.GetAddress().String(), value.String(), token)
 			continue
 		}
 		_, err = acc.SendTx(c, tx)
 		if err != nil {
-			log.Printf("Failed to send token transfer tx %v: %v", tx, err.Error())
+			log.Printf("Failed to send token transfer tx: err=%v, from=%v, to=%v, value=%v, token=%v",
+				err.Error(), acc.GetAddress().String(), to.GetAddress().String(), value.String(), token)
 			continue
 		}
 		receipt, err := c.TransactionReceipt(context.Background(), tx.Hash())
 		if err != nil {
-			log.Printf("Failed to fetch receipt of tx %s: %v", tx.Hash().String(), err.Error())
+			log.Printf("Failed to fetch receipt of tx %s: err=%v, from=%v, to=%v, value=%v, token=%v",
+				tx.Hash().String(), err.Error(), acc.GetAddress().String(), to.GetAddress().String(), value.String(), token)
 			continue
 		}
 
 		if receipt.Status != types.ReceiptStatusSuccessful {
-			log.Printf("Token transfer tx %s is failed %d", tx.Hash().String(), receipt.Status)
+			log.Printf("Token transfer tx %s is failed %d, from=%v, to=%v, value=%v, token=%v",
+				tx.Hash().String(), receipt.Status, acc.GetAddress().String(), to.GetAddress().String(), value.String(), token)
 			continue
 		}
 

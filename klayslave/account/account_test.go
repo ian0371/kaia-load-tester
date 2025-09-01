@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParallelDistribute(t *testing.T) {
+func TestHierarchicalDistributeTransfer(t *testing.T) {
 	var (
 		rich       = NewAccount(0)
 		accs       = make([]*Account, 0)

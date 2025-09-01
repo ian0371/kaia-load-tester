@@ -217,7 +217,6 @@ func (acc *Account) NewSessionDeleteCtx(i int) (*types.SessionContext, error) {
 	}, nil
 }
 
-// NewValueTransferCtx creates a new session
 func (acc *Account) NewValueTransferCtx(to *Account, value *big.Int) (*types.ValueTransferContext, error) {
 	vtCtx := types.ValueTransferContext{
 		L1Owner: acc.GetAddress(),
@@ -226,6 +225,17 @@ func (acc *Account) NewValueTransferCtx(to *Account, value *big.Int) (*types.Val
 	}
 
 	return &vtCtx, nil
+}
+
+func (acc *Account) NewTokenTransferCtx(to *Account, value *big.Int, token string) (*types.TokenTransferContext, error) {
+	ctx := types.TokenTransferContext{
+		L1Owner: acc.GetAddress(),
+		To:      to.GetAddress(),
+		Value:   value,
+		Token:   token,
+	}
+
+	return &ctx, nil
 }
 
 func (acc *Account) GetReceipt(c *ethclient.Client, txHash common.Hash) (*types.Receipt, error) {
@@ -312,6 +322,42 @@ func (acc *Account) TransferSignedTxWithGuaranteeRetry(c *ethclient.Client, to *
 		log.Fatalf("tx mined but failed, err=%s, txHash=%s", err, lastTx.Hash().String())
 	}
 	return lastTx
+}
+
+func (acc *Account) TransferTokenSignedTxWithGuaranteeRetry(c *ethclient.Client, to *Account, value *big.Int, token string) *types.Transaction {
+	var (
+		err error
+		tx  *types.Transaction
+	)
+
+	for {
+		time.Sleep(1 * time.Second)
+		tx, err = acc.GenTokenTransferTx(to, value, token)
+		if err != nil {
+			log.Printf("Failed to generate token transfer tx: %v", err.Error())
+			continue
+		}
+		_, err = acc.SendTx(c, tx)
+		if err != nil {
+			log.Printf("Failed to send token transfer tx %s: %v", tx.Hash().String(), err.Error())
+			continue
+		}
+		receipt, err := c.TransactionReceipt(context.Background(), tx.Hash())
+		if err != nil {
+			log.Printf("Failed to fetch receipt of tx %s: %v", tx.Hash().String(), err.Error())
+			continue
+		}
+
+		if receipt.Status != types.ReceiptStatusSuccessful {
+			log.Printf("Token transfer tx %s is failed %d", tx.Hash().String(), receipt.Status)
+			continue
+		}
+
+		log.Printf("Token transfer tx is successful")
+		break
+	}
+
+	return tx
 }
 
 func (acc *Account) RegisterNewSession(c *ethclient.Client) error {
@@ -401,6 +447,39 @@ func (acc *Account) GenTransferTx(to *Account, value *big.Int) (*types.Transacti
 	acc.timenonce++
 
 	vtCtx, err := acc.NewValueTransferCtx(to, value)
+	if err != nil {
+		return nil, err
+	}
+
+	signer := types.LatestSignerForChainID(chainID)
+	input, err := types.WrapTxAsInput(vtCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(
+		acc.timenonce,
+		types.DexAddress,
+		common.Big0,
+		0,
+		common.Big0,
+		input,
+	)
+
+	tx, err = types.SignTx(tx, signer, acc.privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (acc *Account) GenTokenTransferTx(to *Account, value *big.Int, token string) (*types.Transaction, error) {
+	acc.mutex.Lock()
+	defer acc.mutex.Unlock()
+	acc.timenonce++
+
+	vtCtx, err := acc.NewTokenTransferCtx(to, value, token)
 	if err != nil {
 		return nil, err
 	}

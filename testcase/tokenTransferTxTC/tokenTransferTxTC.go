@@ -1,7 +1,6 @@
 package tokenTransferTxTC
 
 import (
-	"fmt"
 	"log"
 	"math/big"
 	"math/rand"
@@ -64,13 +63,13 @@ func Run() {
 	token := tokenIds[rand.Intn(len(tokenIds))]
 	tx, err := from.GenTokenTransferTx(to, value, token)
 	if err != nil {
-		fmt.Printf("Failed to generate token transfer tx: %v\n", err.Error())
+		log.Printf("Failed to generate token transfer tx: %v\n", err.Error())
 		return
 	}
 	_, err = from.SendTx(cli, tx)
 	elapsed := boomer.Now() - start
 	if err != nil {
-		fmt.Printf("Failed to send token transfer tx: %v\n", err.Error())
+		log.Printf("Failed to send token transfer tx: %v\n", err.Error())
 		boomer.RecordFailure("http", "SendTransferTx"+" to "+endPoint, elapsed, err.Error())
 		return
 	}

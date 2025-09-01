@@ -1,7 +1,6 @@
 package sessionTxTC
 
 import (
-	"fmt"
 	"log"
 	"math/big"
 	"sync/atomic"
@@ -39,9 +38,7 @@ func Init(accs []*account.Account, endpoint string, _ *big.Int) {
 
 	cliPool.Init(1000, 3000, cliCreate)
 
-	for _, acc := range accs {
-		accGrp = append(accGrp, acc)
-	}
+	accGrp = append(accGrp, accs...)
 
 	nAcc = len(accGrp)
 
@@ -69,7 +66,7 @@ func Run() {
 	rets, err := from.SendTxBatch(cli, txs)
 	elapsed := boomer.Now() - start
 	if err != nil {
-		fmt.Printf("Failed to send session tx: %v\n", err.Error())
+		log.Printf("Failed to send session tx: error=%v", err)
 		return
 	}
 
@@ -77,7 +74,7 @@ func Run() {
 		if ret != nil && len(*ret) == 32 {
 			boomer.RecordSuccess("http", "SendSessionTx"+" to "+endPoint, elapsed, int64(10))
 		} else {
-			fmt.Printf("Failed to send session tx %v\n", ret.String())
+			log.Printf("Failed to send session tx %v\n", ret.String())
 			boomer.RecordFailure("http", "SendSessionTx"+" to "+endPoint, elapsed, ret.String())
 		}
 	}

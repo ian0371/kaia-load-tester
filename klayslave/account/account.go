@@ -238,6 +238,16 @@ func (acc *Account) NewTokenTransferCtx(to *Account, value *big.Int, token strin
 	return &ctx, nil
 }
 
+func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType int) (*types.OrderContext, error) {
+	ctx := types.OrderContext{
+		L1Owner:    acc.GetAddress(),
+		BaseToken:  baseToken,
+		QuoteToken: quoteToken,
+	}
+
+	return &ctx, nil
+}
+
 func (acc *Account) GetReceipt(c *ethclient.Client, txHash common.Hash) (*types.Receipt, error) {
 	ctx := context.Background()
 	return c.TransactionReceipt(ctx, txHash)
@@ -485,6 +495,35 @@ func (acc *Account) GenTokenTransferTx(to *Account, value *big.Int, token string
 
 	signer := types.LatestSignerForChainID(chainID)
 	input, err := types.WrapTxAsInput(vtCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(
+		acc.timenonce,
+		types.DexAddress,
+		common.Big0,
+		0,
+		common.Big0,
+		input,
+	)
+
+	tx, err = types.SignTx(tx, signer, acc.privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType int) (*types.Transaction, error) {
+	ctx, err := acc.NewOrderCtx(baseToken, quoteToken, side, price, quantity, orderType)
+	if err != nil {
+		return nil, err
+	}
+
+	signer := types.LatestSignerForChainID(chainID)
+	input, err := types.WrapTxAsInput(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -122,8 +122,8 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 			from.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value)
 		})
 		log.Printf("Finished charging KLAY to %d test account(s)\n", len(accs))
-	} else if cfg.InTheTcList("tokenTransferTxTC") {
-		log.Printf("Start charging Token to test accounts because tokenTransferTxTC is enabled")
+	} else if cfg.InTheTcList("tokenTransferTxTC") || cfg.InTheTcList("newOrderTxTC") {
+		log.Printf("Start charging Token to test accounts because tokenTransferTxTC or newOrderTxTC is enabled")
 		accs := accGrp.GetValidAccGrp()
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation

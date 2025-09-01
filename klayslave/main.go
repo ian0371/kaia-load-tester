@@ -101,6 +101,15 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 		log.Fatalf("transfer for reservoir failed, localReservoir")
 	}
 
+	tx = globalReservoirAccount.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, big.NewInt(1e9), "4")
+	receipt, err = bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
+	if err != nil {
+		log.Fatalf("receipt failed, err:%v", err.Error())
+	}
+	if receipt.Status != 1 {
+		log.Fatalf("transfer for reservoir failed, localReservoir")
+	}
+
 	// 3. charge KAIA
 	if cfg.InTheTcList("transferTxTC") {
 		log.Printf("Start charging KLAY to test accounts because transferTxTC is enabled")

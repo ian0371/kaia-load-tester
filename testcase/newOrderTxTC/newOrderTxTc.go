@@ -54,10 +54,10 @@ func Run() {
 		from           = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 		baseToken      = "2"
 		quoteToken     = "3"
-		base           = uint256.NewInt(uint64(1e18)) // 0.3-0.7
+		base           = uint256.NewInt(uint64(1e18))
 		priceOffset    = uint256.NewInt(uint64(rand.Intn(5) + 3))
 		quantityOffset = uint256.NewInt(uint64(rand.Intn(5) + 3))
-		price          = new(uint256.Int).Mul(base, priceOffset) // 3-7
+		price          = new(uint256.Int).Mul(base, priceOffset)
 		quantity       = new(uint256.Int).Mul(base, quantityOffset)
 		side           = uint8(rand.Intn(2))
 		orderType      = uint8(0)

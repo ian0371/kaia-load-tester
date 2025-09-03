@@ -20,8 +20,6 @@ var (
 	accGrp   []*account.Account
 	cliPool  clipool.ClientPool
 
-	maxRetryCount int
-
 	cursor uint32
 )
 
@@ -41,8 +39,6 @@ func Init(accs []*account.Account, endpoint string, _ *big.Int) {
 	accGrp = append(accGrp, accs...)
 
 	nAcc = len(accGrp)
-
-	maxRetryCount = 30
 }
 
 func Run() {

@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sync/atomic"
 
+	"github.com/ethereum/go-ethereum/core/orderbook"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/holiman/uint256"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
@@ -21,9 +22,12 @@ var (
 	accGrp   []*account.Account
 	cliPool  clipool.ClientPool
 
-	maxRetryCount int
-
 	cursor uint32
+
+	baseToken  = "2"
+	quoteToken = "3"
+	base       = uint256.NewInt(uint64(1e18))
+	orderType  = orderbook.LIMIT
 )
 
 func Init(accs []*account.Account, endpoint string, _ *big.Int) {
@@ -42,8 +46,6 @@ func Init(accs []*account.Account, endpoint string, _ *big.Int) {
 	accGrp = append(accGrp, accs...)
 
 	nAcc = len(accGrp)
-
-	maxRetryCount = 30
 }
 
 func Run() {
@@ -52,15 +54,11 @@ func Run() {
 
 	var (
 		from           = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		baseToken      = "2"
-		quoteToken     = "3"
-		base           = uint256.NewInt(uint64(1e18))
 		priceOffset    = uint256.NewInt(uint64(rand.Intn(5) + 3))
 		quantityOffset = uint256.NewInt(uint64(rand.Intn(5) + 3))
 		price          = new(uint256.Int).Mul(base, priceOffset)
 		quantity       = new(uint256.Int).Mul(base, quantityOffset)
-		side           = uint8(rand.Intn(2))
-		orderType      = uint8(0)
+		side           = orderbook.Side(rand.Intn(2))
 	)
 
 	start := boomer.Now()

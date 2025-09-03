@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/orderbook"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -237,15 +238,15 @@ func (acc *Account) NewTokenTransferCtx(to *Account, value *big.Int, token strin
 	return &ctx
 }
 
-func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType uint8) *types.OrderContext {
+func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side orderbook.Side, price *big.Int, quantity *big.Int, orderType orderbook.OrderType) *types.OrderContext {
 	ctx := types.OrderContext{
 		L1Owner:    acc.GetAddress(),
 		BaseToken:  baseToken,
 		QuoteToken: quoteToken,
-		Side:       side,
+		Side:       uint8(side),
 		Price:      price,
 		Quantity:   quantity,
-		OrderType:  orderType,
+		OrderType:  uint8(orderType),
 		OrderMode:  0,
 		TPSL:       nil,
 	}
@@ -523,7 +524,7 @@ func (acc *Account) GenTokenTransferTx(to *Account, value *big.Int, token string
 	return tx, nil
 }
 
-func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side uint8, price *big.Int, quantity *big.Int, orderType uint8) (*types.Transaction, error) {
+func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side orderbook.Side, price *big.Int, quantity *big.Int, orderType orderbook.OrderType) (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
 	acc.timenonce++

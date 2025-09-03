@@ -176,6 +176,7 @@ func findQuantity(aggs []*orderbook.Aggregated, token string, price *uint256.Int
 
 	arrIdx := slices.IndexFunc(arr, func(a []string) bool {
 		p, _ := uint256.FromBig(new(big.Int).SetBytes([]byte(a[0])))
+		p = new(uint256.Int).Mul(base, p)
 		return p.Cmp(price) == 0
 	})
 	if arrIdx == -1 {

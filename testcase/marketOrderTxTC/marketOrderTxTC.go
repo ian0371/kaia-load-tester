@@ -28,9 +28,9 @@ var (
 	cursor uint32
 
 	// LP settings
-	askLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(3)))      // $3
-	bidLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(2)))      // $2
-	minQuantity       *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(100000))) // 100k
+	askLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(3)))   // $3
+	bidLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(2)))   // $2
+	minQuantity       *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(1e6))) // 1M
 
 	// User settings
 	baseToken  = "2"
@@ -113,6 +113,7 @@ func liquidityProvider(cli *ethclient.Client) {
 				log.Printf("Failed to send LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.String(), askDeficit.String(), orderbook.LIMIT)
 			}
+			log.Printf("Sent ask side LP order: price=%s, quantity=%s", askLiquidityPrice.String(), askDeficit.String())
 		}
 		if bidDeficit.Sign() > 0 {
 			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.ToBig(), bidDeficit.ToBig(), orderbook.LIMIT)
@@ -125,6 +126,7 @@ func liquidityProvider(cli *ethclient.Client) {
 				log.Printf("Failed to send LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.String(), bidDeficit.String(), orderbook.LIMIT)
 			}
+			log.Printf("Sent bid side LP order: price=%s, quantity=%s", bidLiquidityPrice.String(), bidDeficit.String())
 		}
 
 		time.Sleep(10 * time.Second)
@@ -159,7 +161,7 @@ func findQuantity(aggs []*orderbook.Aggregated, symbol string, price *uint256.In
 		return a.Symbol == symbol
 	})
 	if aggIdx == -1 {
-		log.Printf("Symbol not found: %s", symbol)
+		log.Printf("Symbol not found: %s. Regarding quantity as zero.", symbol)
 		return uint256.NewInt(0)
 	}
 
@@ -171,7 +173,7 @@ func findQuantity(aggs []*orderbook.Aggregated, symbol string, price *uint256.In
 	} else if side == orderbook.BUY {
 		arr = agg.Bids
 	} else {
-		log.Printf("Invalid side: %d", side)
+		log.Printf("Invalid side: %d. Regarding quantity as zero.", side)
 		return uint256.NewInt(0)
 	}
 
@@ -181,7 +183,7 @@ func findQuantity(aggs []*orderbook.Aggregated, symbol string, price *uint256.In
 		return p.Cmp(price) == 0
 	})
 	if arrIdx == -1 {
-		log.Printf("Price not found: %s", price.String())
+		log.Printf("Price not found: %s. Regarding quantity as zero.", price.String())
 		return uint256.NewInt(0)
 	}
 

@@ -1,4 +1,4 @@
-package newOrderTxTC
+package limitOrderTxTC
 
 import (
 	"log"
@@ -13,7 +13,7 @@ import (
 	"github.com/myzhan/boomer"
 )
 
-const Name = "newOrderTxTC"
+const Name = "limitOrderTxTC"
 
 var (
 	endPoint string

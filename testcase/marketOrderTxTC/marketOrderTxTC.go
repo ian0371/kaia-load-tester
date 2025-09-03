@@ -28,9 +28,9 @@ var (
 	cursor uint32
 
 	// LP settings
-	askLiquidityPrice *uint256.Int = uint256.NewInt(uint64(3e18))
-	bidLiquidityPrice *uint256.Int = uint256.NewInt(uint64(2e18))
-	minQuantity       *uint256.Int = uint256.NewInt(uint64(100000))
+	askLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(3e18)))
+	bidLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(2e18)))
+	minQuantity       *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(100000)))
 
 	// User settings
 	baseToken  = "2"
@@ -106,24 +106,24 @@ func liquidityProvider(cli *ethclient.Client) {
 			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.ToBig(), askDeficit.ToBig(), orderbook.LIMIT)
 			if err != nil {
 				log.Printf("Failed to generate LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.String(), askDeficit.String(), orderbook.MARKET)
+					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.String(), askDeficit.String(), orderbook.LIMIT)
 			}
 			_, err = from.SendTx(cli, tx)
 			if err != nil {
 				log.Printf("Failed to send LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.String(), askDeficit.String(), orderbook.MARKET)
+					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.String(), askDeficit.String(), orderbook.LIMIT)
 			}
 		}
 		if bidDeficit.Sign() > 0 {
-			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.ToBig(), bidDeficit.ToBig(), orderbook.MARKET)
+			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.ToBig(), bidDeficit.ToBig(), orderbook.LIMIT)
 			if err != nil {
 				log.Printf("Failed to generate LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.String(), bidDeficit.String(), orderbook.MARKET)
+					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.String(), bidDeficit.String(), orderbook.LIMIT)
 			}
 			_, err = from.SendTx(cli, tx)
 			if err != nil {
 				log.Printf("Failed to send LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.String(), bidDeficit.String(), orderbook.MARKET)
+					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.String(), bidDeficit.String(), orderbook.LIMIT)
 			}
 		}
 

@@ -122,7 +122,7 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 			from.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value)
 		})
 		log.Printf("Finished charging KLAY to %d test account(s)\n", len(accs))
-	} else if cfg.InTheTcList("tokenTransferTxTC") || cfg.InTheTcList("newOrderTxTC") {
+	} else {
 		log.Printf("Start charging Token to test accounts because tokenTransferTxTC or newOrderTxTC is enabled")
 		accs := accGrp.GetValidAccGrp()
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
@@ -133,8 +133,6 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 			})
 			log.Printf("Finished charging Token \"%s\" to %d test account(s)\n", token, len(accs))
 		}
-	} else {
-		log.Printf("Skip charging KLAY to test accounts")
 	}
 
 	// Wait, charge KAIA happen in 100% of all created test accounts

@@ -28,9 +28,9 @@ var (
 	cursor uint32
 
 	// LP settings
-	askLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(3e18)))
-	bidLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(2e18)))
-	minQuantity       *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(100000)))
+	askLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(3)))      // $3
+	bidLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(2)))      // $2
+	minQuantity       *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(100000))) // 100k
 
 	// User settings
 	baseToken  = "2"

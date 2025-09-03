@@ -32,7 +32,7 @@ type Config struct {
 	testTokenAddress string
 	gsrAddress       string
 
-	chargeKLAYAmount  int
+	chargeKLAYAmount  float64
 	chargeParallelNum int
 	batchSize         int
 
@@ -80,7 +80,7 @@ func (cfg *Config) setConfigsFromFlag(ctx *cli.Context) {
 	cfg.nUserForUnsigned = ctx.Int("vuunsigned")
 	cfg.nUserForNewAccounts = 5
 	cfg.activeUserPercent = ctx.Int("activeUserPercent")
-	cfg.chargeKLAYAmount = ctx.Int("charge")
+	cfg.chargeKLAYAmount = ctx.Float64("charge")
 	cfg.chargeParallelNum = ctx.Int("chargeParallel")
 	cfg.batchSize = ctx.Int("batchSize")
 	cfg.richWalletPrivateKey = ctx.String("key")
@@ -225,7 +225,13 @@ func (cfg *Config) InTheTcList(tcName string) bool {
 	return false
 }
 func (cfg *Config) GetChargeValue() *big.Int {
-	return new(big.Int).Mul(big.NewInt(int64(cfg.chargeKLAYAmount)), big.NewInt(params.KAIA))
+	f := new(big.Float).Mul(
+		new(big.Float).SetInt64(params.KAIA),
+		new(big.Float).SetFloat64(cfg.chargeKLAYAmount),
+	)
+	i := new(big.Int)
+	f.Int(i)
+	return i
 }
 func (cfg *Config) GetTotalChargeValue() *big.Int {
 	return new(big.Int).Mul(cfg.GetChargeValue(), big.NewInt(int64(cfg.nUserForUnsigned+cfg.nUserForSigned+cfg.nUserForNewAccounts+1)))
@@ -238,7 +244,7 @@ var Flags = []cli.Flag{
 	cli.IntFlag{Name: "vuunsigned", Value: 5, Usage: "num of test account for unsigned Tx TC"},
 	//cli.IntFlag{Name: "acc.nUserForNewAccounts", Value: 5, Usage: "num of new accounts"}, // TODO-kaia-load-tester: find out what this value for
 	cli.IntFlag{Name: "activeUserPercent", Value: 100, Usage: "percent of active accounts"},
-	cli.IntFlag{Name: "charge", Value: 1000000000, Usage: "charging amount for each test account in KLAY"},
+	cli.Float64Flag{Name: "charge", Value: 1000000000, Usage: "charging amount for each test account in KLAY"},
 	cli.IntFlag{Name: "maxidleconns", Value: 100, Usage: "maximum number of idle connections in default http client"},
 	cli.IntFlag{Name: "batchSize", Value: 10, Usage: "batch size"},
 	cli.StringFlag{Name: "key", Usage: "private key of rich account for kaia charging of test accounts"},

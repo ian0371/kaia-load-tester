@@ -154,20 +154,21 @@ func checkLiquidityDeficit(cli *ethclient.Client) []*uint256.Int {
 	return []*uint256.Int{askDeficit, bidDeficit}
 }
 
-func findQuantity(aggs []*orderbook.Aggregated, token string, price *uint256.Int, side orderbook.Side) *uint256.Int {
+func findQuantity(aggs []*orderbook.Aggregated, symbol string, price *uint256.Int, side orderbook.Side) *uint256.Int {
 	aggIdx := slices.IndexFunc(aggs, func(a *orderbook.Aggregated) bool {
-		return a.Symbol == token
+		return a.Symbol == symbol
 	})
 	if aggIdx == -1 {
+		log.Printf("Symbol not found: %s", symbol)
 		return uint256.NewInt(0)
 	}
 
 	agg := aggs[aggIdx]
 
 	var arr [][]string
-	if side == orderbook.BUY {
+	if side == orderbook.SELL {
 		arr = agg.Asks
-	} else if side == orderbook.SELL {
+	} else if side == orderbook.BUY {
 		arr = agg.Bids
 	} else {
 		log.Printf("Invalid side: %d", side)
@@ -175,11 +176,12 @@ func findQuantity(aggs []*orderbook.Aggregated, token string, price *uint256.Int
 	}
 
 	arrIdx := slices.IndexFunc(arr, func(a []string) bool {
-		p, _ := uint256.FromBig(new(big.Int).SetBytes([]byte(a[0])))
+		p, _ := uint256.FromDecimal(a[0])
 		p = new(uint256.Int).Mul(base, p)
 		return p.Cmp(price) == 0
 	})
 	if arrIdx == -1 {
+		log.Printf("Price not found: %s", price.String())
 		return uint256.NewInt(0)
 	}
 

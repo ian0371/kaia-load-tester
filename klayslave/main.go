@@ -122,17 +122,17 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 			from.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value)
 		})
 		log.Printf("Finished charging KLAY to %d test account(s)\n", len(accs))
-	} else {
-		log.Printf("Start charging Token to test accounts because tokenTransferTxTC or newOrderTxTC is enabled")
-		accs := accGrp.GetValidAccGrp()
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
-		for _, token := range []string{"2", "3", "4", "5", "6", "7", "8", "9", "10"} {
-			account.HierarchicalDistribute(accs, localReservoirAccount, new(big.Int).Mul(big.NewInt(1e10), big.NewInt(1e18)), func(from, to *account.Account, value *big.Int) {
-				from.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value, token)
-			})
-			log.Printf("Finished charging Token \"%s\" to %d test account(s)\n", token, len(accs))
-		}
+	}
+
+	log.Printf("Start charging Token to test accounts")
+	accs := accGrp.GetValidAccGrp()
+	accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
+	accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
+	for _, token := range []string{"2", "3"} {
+		account.HierarchicalDistribute(accs, localReservoirAccount, new(big.Int).Mul(big.NewInt(1e10), big.NewInt(1e18)), func(from, to *account.Account, value *big.Int) {
+			from.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value, token)
+		})
+		log.Printf("Finished charging Token \"%s\" to %d test account(s)\n", token, len(accs))
 	}
 
 	// Wait, charge KAIA happen in 100% of all created test accounts

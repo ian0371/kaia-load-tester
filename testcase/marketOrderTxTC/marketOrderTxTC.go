@@ -183,5 +183,6 @@ func findQuantity(aggs []*orderbook.Aggregated, token string, price *uint256.Int
 	}
 
 	quantity, _ := uint256.FromDecimal(arr[arrIdx][1])
+	quantity = new(uint256.Int).Mul(base, quantity)
 	return quantity
 }

@@ -254,6 +254,22 @@ func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side orderb
 	return &ctx
 }
 
+func (acc *Account) NewStopOrderCtx(baseToken string, quoteToken string, side orderbook.Side, stopPrice, price *big.Int, quantity *big.Int, orderType orderbook.OrderType) *types.StopOrderContext {
+	ctx := types.StopOrderContext{
+		L1Owner:    acc.GetAddress(),
+		BaseToken:  baseToken,
+		QuoteToken: quoteToken,
+		StopPrice:  stopPrice,
+		Price:      price,
+		Quantity:   quantity,
+		Side:       uint8(side),
+		OrderType:  uint8(orderType),
+		OrderMode:  0,
+	}
+
+	return &ctx
+}
+
 func (acc *Account) GetReceipt(c *ethclient.Client, txHash common.Hash) (*types.Receipt, error) {
 	ctx := context.Background()
 	return c.TransactionReceipt(ctx, txHash)
@@ -530,6 +546,36 @@ func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side orde
 	acc.timenonce++
 
 	ctx := acc.NewOrderCtx(baseToken, quoteToken, side, price, quantity, orderType)
+
+	signer := types.LatestSignerForChainID(chainID)
+	input, err := types.WrapTxAsInput(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(
+		acc.timenonce,
+		types.DexAddress,
+		common.Big0,
+		0,
+		common.Big0,
+		input,
+	)
+
+	tx, err = types.SignTx(tx, signer, acc.privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (acc *Account) GenNewStopOrderTx(baseToken string, quoteToken string, side orderbook.Side, stopPrice, price *big.Int, quantity *big.Int, orderType orderbook.OrderType) (*types.Transaction, error) {
+	acc.mutex.Lock()
+	defer acc.mutex.Unlock()
+	acc.timenonce++
+
+	ctx := acc.NewStopOrderCtx(baseToken, quoteToken, side, stopPrice, price, quantity, orderType)
 
 	signer := types.LatestSignerForChainID(chainID)
 	input, err := types.WrapTxAsInput(ctx)

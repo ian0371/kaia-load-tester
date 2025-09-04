@@ -71,8 +71,8 @@ func Run() {
 func RunBidStop(cli *ethclient.Client) {
 	var (
 		from      = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		stopPrice = uint256.NewInt(3)
-		price     = uint256.NewInt(2)
+		stopPrice = new(uint256.Int).Mul(base, uint256.NewInt(3))
+		price     = new(uint256.Int).Mul(base, uint256.NewInt(2))
 		quantity  = new(uint256.Int).Mul(base, uint256.NewInt(uint64(100)))
 		side      = orderbook.BUY
 	)
@@ -80,14 +80,14 @@ func RunBidStop(cli *ethclient.Client) {
 	start := boomer.Now()
 	tx, err := from.GenNewStopOrderTx(baseToken, quoteToken, side, stopPrice.ToBig(), price.ToBig(), quantity.ToBig(), orderType)
 	if err != nil {
-		log.Printf("Failed to generate new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+		log.Printf("Failed to generate new stop order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 		return
 	}
 	_, err = from.SendTx(cli, tx)
 	elapsed := boomer.Now() - start
 	if err != nil {
-		log.Printf("Failed to send new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d\n",
+		log.Printf("Failed to send new stop order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d\n",
 			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 		boomer.RecordFailure("http", "SendNewOrderTx"+" to "+endPoint, elapsed, err.Error())
 		return
@@ -99,8 +99,8 @@ func RunBidStop(cli *ethclient.Client) {
 func RunAskStop(cli *ethclient.Client) {
 	var (
 		from      = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		stopPrice = uint256.NewInt(2)
-		price     = uint256.NewInt(3)
+		stopPrice = new(uint256.Int).Mul(base, uint256.NewInt(2))
+		price     = new(uint256.Int).Mul(base, uint256.NewInt(3))
 		quantity  = new(uint256.Int).Mul(base, uint256.NewInt(uint64(100)))
 		side      = orderbook.SELL
 	)
@@ -108,14 +108,14 @@ func RunAskStop(cli *ethclient.Client) {
 	start := boomer.Now()
 	tx, err := from.GenNewStopOrderTx(baseToken, quoteToken, side, stopPrice.ToBig(), price.ToBig(), quantity.ToBig(), orderType)
 	if err != nil {
-		log.Printf("Failed to generate new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+		log.Printf("Failed to generate new stop order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 		return
 	}
 	_, err = from.SendTx(cli, tx)
 	elapsed := boomer.Now() - start
 	if err != nil {
-		log.Printf("Failed to send new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d\n",
+		log.Printf("Failed to send new stop order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d\n",
 			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 		boomer.RecordFailure("http", "SendNewOrderTx"+" to "+endPoint, elapsed, err.Error())
 		return
@@ -127,7 +127,7 @@ func RunAskStop(cli *ethclient.Client) {
 func RunBid(cli *ethclient.Client) {
 	var (
 		from     = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		price    = uint256.NewInt(2)
+		price    = new(uint256.Int).Mul(base, uint256.NewInt(2))
 		quantity = new(uint256.Int).Mul(base, uint256.NewInt(uint64(1)))
 		side     = orderbook.BUY
 	)
@@ -154,7 +154,7 @@ func RunBid(cli *ethclient.Client) {
 func RunAsk(cli *ethclient.Client) {
 	var (
 		from     = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		price    = uint256.NewInt(3)
+		price    = new(uint256.Int).Mul(base, uint256.NewInt(3))
 		quantity = new(uint256.Int).Mul(base, uint256.NewInt(uint64(1)))
 		side     = orderbook.SELL
 	)

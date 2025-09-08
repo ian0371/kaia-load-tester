@@ -95,7 +95,23 @@ func Run() {
 		return
 	}
 
-	boomer.RecordSuccess("http", "SendNewOrderTxWithTpsl"+" to "+endPoint, elapsed, int64(10))
+	// $2 (slTrigger) LIMIT BUY
+	tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, slTrigger.ToBig(), quantity.ToBig(), orderType)
+	if err != nil {
+		log.Printf("Failed to generate new TPSL order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
+		return
+	}
+	_, err = from.SendTx(cli, tx)
+	elapsed = boomer.Now() - start
+	if err != nil {
+		log.Printf("Failed to send new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d\n",
+			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
+		boomer.RecordFailure("http", "SendNewOrderTx"+" to "+endPoint, elapsed, err.Error())
+		return
+	}
+
+	boomer.RecordSuccess("http", "SendNewOrderTx"+" to "+endPoint, elapsed, int64(10))
 }
 
 // phase alternates every `phaseDurationSec` seconds

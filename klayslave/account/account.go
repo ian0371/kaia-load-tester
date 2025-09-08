@@ -254,6 +254,19 @@ func (acc *Account) NewOrderCtx(baseToken string, quoteToken string, side orderb
 	return &ctx
 }
 
+func (acc *Account) NewOrderCtxWithTpsl(baseToken string, quoteToken string, side orderbook.Side, price *big.Int, quantity *big.Int, orderType orderbook.OrderType, tpLimit, slTrigger, slLimit *big.Int) *types.OrderContext {
+	tpsl := types.TPSLContext{
+		TPLimit:   tpLimit,
+		SLTrigger: slTrigger,
+		SLLimit:   slLimit,
+	}
+
+	ctx := acc.NewOrderCtx(baseToken, quoteToken, side, price, quantity, orderType)
+	ctx.TPSL = &tpsl
+
+	return ctx
+}
+
 func (acc *Account) NewStopOrderCtx(baseToken string, quoteToken string, side orderbook.Side, stopPrice, price *big.Int, quantity *big.Int, orderType orderbook.OrderType) *types.StopOrderContext {
 	ctx := types.StopOrderContext{
 		L1Owner:    acc.GetAddress(),
@@ -265,6 +278,14 @@ func (acc *Account) NewStopOrderCtx(baseToken string, quoteToken string, side or
 		Side:       uint8(side),
 		OrderType:  uint8(orderType),
 		OrderMode:  0,
+	}
+
+	return &ctx
+}
+
+func (acc *Account) NewCancelAllCtx() *types.CancelAllContext {
+	ctx := types.CancelAllContext{
+		L1Owner: acc.GetAddress(),
 	}
 
 	return &ctx
@@ -570,12 +591,72 @@ func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side orde
 	return tx, nil
 }
 
+func (acc *Account) GenNewOrderTxWithTpsl(baseToken string, quoteToken string, side orderbook.Side, price *big.Int, quantity *big.Int, orderType orderbook.OrderType, tpLimit, slTrigger, slLimit *big.Int) (*types.Transaction, error) {
+	acc.mutex.Lock()
+	defer acc.mutex.Unlock()
+	acc.timenonce++
+
+	ctx := acc.NewOrderCtxWithTpsl(baseToken, quoteToken, side, price, quantity, orderType, tpLimit, slTrigger, slLimit)
+
+	signer := types.LatestSignerForChainID(chainID)
+	input, err := types.WrapTxAsInput(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(
+		acc.timenonce,
+		types.DexAddress,
+		common.Big0,
+		0,
+		common.Big0,
+		input,
+	)
+
+	tx, err = types.SignTx(tx, signer, acc.privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
 func (acc *Account) GenNewStopOrderTx(baseToken string, quoteToken string, side orderbook.Side, stopPrice, price *big.Int, quantity *big.Int, orderType orderbook.OrderType) (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
 	acc.timenonce++
 
 	ctx := acc.NewStopOrderCtx(baseToken, quoteToken, side, stopPrice, price, quantity, orderType)
+
+	signer := types.LatestSignerForChainID(chainID)
+	input, err := types.WrapTxAsInput(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := types.NewTransaction(
+		acc.timenonce,
+		types.DexAddress,
+		common.Big0,
+		0,
+		common.Big0,
+		input,
+	)
+
+	tx, err = types.SignTx(tx, signer, acc.privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (acc *Account) GenNewCancelAllTx() (*types.Transaction, error) {
+	acc.mutex.Lock()
+	defer acc.mutex.Unlock()
+	acc.timenonce++
+
+	ctx := acc.NewCancelAllCtx()
 
 	signer := types.LatestSignerForChainID(chainID)
 	input, err := types.WrapTxAsInput(ctx)
@@ -796,4 +877,8 @@ func HierarchicalDistribute(accs []*Account, from *Account, value *big.Int, send
 
 	// Wait for all chunks to complete
 	wg.Wait()
+}
+
+func (acc *Account) PrivateKey() *ecdsa.PrivateKey {
+	return acc.privateKey
 }

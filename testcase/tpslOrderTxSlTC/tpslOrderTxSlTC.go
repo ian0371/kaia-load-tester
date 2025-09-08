@@ -1,4 +1,4 @@
-package tpslOrderTxTpTC
+package tpslOrderTxSlTC
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"github.com/myzhan/boomer"
 )
 
-const Name = "tpslOrderTxTpTC"
+const Name = "tpslOrderTxSlTC"
 
 var (
 	endPoint string
@@ -29,8 +29,8 @@ var (
 	// LP settings
 	phase1AskLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(3)))   // $3
 	phase1BidLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(2)))   // $2
-	phase2AskLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(5)))   // $5
-	phase2BidLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(4)))   // $4
+	phase2AskLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(2)))   // $2
+	phase2BidLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(1)))   // $1
 	minQuantity             *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(1e6))) // 1M
 
 	// User settings
@@ -74,12 +74,13 @@ func Run() {
 		price     = new(uint256.Int).Mul(base, uint256.NewInt(3))
 		quantity  = new(uint256.Int).Mul(base, uint256.NewInt(uint64(1)))
 		side      = orderbook.BUY
-		tpLimit   = new(uint256.Int).Mul(base, uint256.NewInt(4))
+		tpLimit   = new(uint256.Int).Mul(base, uint256.NewInt(9999)) // not triggered
 		slTrigger = new(uint256.Int).Mul(base, uint256.NewInt(2))
+		slLimit   = new(uint256.Int).Mul(base, uint256.NewInt(1))
 	)
 
 	start := boomer.Now()
-	tx, err := from.GenNewOrderTxWithTpsl(baseToken, quoteToken, side, price.ToBig(), quantity.ToBig(), orderType, tpLimit.ToBig(), slTrigger.ToBig(), nil)
+	tx, err := from.GenNewOrderTxWithTpsl(baseToken, quoteToken, side, price.ToBig(), quantity.ToBig(), orderType, tpLimit.ToBig(), slTrigger.ToBig(), slLimit.ToBig())
 	if err != nil {
 		log.Printf("Failed to generate new TPSL order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
@@ -113,7 +114,7 @@ func getPhase() int {
 
 // lp alternates between phase1 and phase2
 // In phase 1, $2 BUY and $3 SELL
-// In phase 2, $4 BUY and $5 SELL
+// In phase 2, $1 BUY and $2 SELL
 func liquidityProvider(cli *ethclient.Client) {
 	var currPhase, prevPhase int
 	for {

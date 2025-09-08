@@ -316,14 +316,13 @@ func (acc *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client,
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	nonce, err := c.PendingNonceAt(ctx, acc.GetAddress())
-	if err != nil {
-		return nil, big.NewInt(0), err
+	if acc.timenonce == 0 {
+		acc.timenonce = uint64(time.Now().UnixMilli())
 	}
-	acc.nonce = uint64(nonce)
+	acc.timenonce++
 
 	tx := types.NewTransaction(
-		acc.nonce,
+		acc.timenonce,
 		to.GetAddress(),
 		value,
 		21000,
@@ -332,7 +331,7 @@ func (acc *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client,
 	gasPrice := tx.GasPrice()
 
 	signer := types.LatestSignerForChainID(chainID)
-	tx, err = types.SignTx(tx, signer, acc.privateKey)
+	tx, err := types.SignTx(tx, signer, acc.privateKey)
 	if err != nil {
 		return nil, gasPrice, err
 	}
@@ -340,8 +339,6 @@ func (acc *Account) TransferSignedTxReturnTx(withLock bool, c *ethclient.Client,
 	if err != nil {
 		return tx, gasPrice, err
 	}
-
-	acc.nonce++
 
 	// fmt.Printf("%v transferSignedTx %v klay to %v klay.\n", self.GetAddress().Hex(), to.GetAddress().Hex(), value)
 

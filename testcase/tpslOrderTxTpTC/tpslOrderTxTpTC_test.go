@@ -154,14 +154,14 @@ func TestNewOrderCtxWithTpsl(t *testing.T) {
 	var (
 		from      = account.NewAccount(0)
 		side      = orderbook.BUY
-		price     = big.NewInt(3e18)
-		quantity  = big.NewInt(1e18)
-		tpLimit   = big.NewInt(4e18)
-		slTrigger = big.NewInt(2e18)
-		slLimit   = big.NewInt(2e18)
+		price     = scaleUp(3)
+		quantity  = scaleUp(1)
+		tpLimit   = scaleUp(4)
+		slTrigger = scaleUp(1)
+		orderType = orderbook.LIMIT
 	)
 
-	ctx := from.NewOrderCtxWithTpsl(baseToken, quoteToken, side, price, quantity, orderType, tpLimit, slTrigger, slLimit)
+	ctx := from.NewOrderCtxWithTpsl(baseToken, quoteToken, side, price, quantity, orderType, tpLimit, slTrigger, nil)
 	input, err := types.WrapTxAsInput(ctx)
 	require.NoError(t, err)
 	tx := types.NewTransaction(

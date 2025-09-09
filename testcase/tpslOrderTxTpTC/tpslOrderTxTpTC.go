@@ -100,7 +100,7 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 			return err
 		}
 	case 2:
-		side = orderbook.SELL
+		side = orderbook.BUY
 		price = scaleUp(4)
 		quantity = scaleUp(1)
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)

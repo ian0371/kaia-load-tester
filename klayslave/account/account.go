@@ -384,14 +384,14 @@ func (acc *Account) TransferTokenSignedTxWithGuaranteeRetry(c *ethclient.Client,
 		time.Sleep(1 * time.Second)
 		tx, err = acc.GenTokenTransferTx(to, value, token)
 		if err != nil {
-			log.Printf("Failed to generate token transfer: err=%v, from=%v, to=%v, value=%v, token=%v",
-				err.Error(), acc.GetAddress().String(), to.GetAddress().String(), value.String(), token)
+			log.Printf("Failed to generate token transfer: err=%v, from=%v, to=%v, timenonce=%v, value=%v, token=%v",
+				err.Error(), acc.GetAddress().String(), to.GetAddress().String(), acc.timenonce, value.String(), token)
 			continue
 		}
 		_, err = acc.SendTx(c, tx)
 		if err != nil {
-			log.Printf("Failed to send token transfer tx: err=%v, from=%v, to=%v, value=%v, token=%v",
-				err.Error(), acc.GetAddress().String(), to.GetAddress().String(), value.String(), token)
+			log.Printf("Failed to send token transfer tx: err=%v, from=%v, to=%v, timenonce=%v, value=%v, token=%v",
+				err.Error(), acc.GetAddress().String(), to.GetAddress().String(), acc.timenonce, value.String(), token)
 			continue
 		}
 		receipt, err := c.TransactionReceipt(context.Background(), tx.Hash())

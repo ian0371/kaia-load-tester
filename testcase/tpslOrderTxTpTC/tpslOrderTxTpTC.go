@@ -74,9 +74,10 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		tx        *types.Transaction
 		orderType = orderbook.LIMIT
 		err       error
+		txType    int
 	)
 
-	switch rand.Intn(3) {
+	switch txType = rand.Intn(3); txType {
 	case 0:
 		side = orderbook.BUY
 		price = scaleUp(3)
@@ -85,8 +86,8 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		slTrigger = scaleUp(1) // not triggered
 		tx, err = from.GenNewOrderTxWithTpsl(baseToken, quoteToken, side, price, quantity, orderType, tpLimit, slTrigger, nil)
 		if err != nil {
-			log.Printf("Failed to generate new TPSL order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-				err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
+			log.Printf("Failed to generate new TPSL order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 			return err
 		}
 	case 1:
@@ -95,8 +96,8 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		quantity = scaleUp(1)
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
 		if err != nil {
-			log.Printf("Failed to generate new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-				err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
+			log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 			return err
 		}
 	case 2:
@@ -105,16 +106,16 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		quantity = scaleUp(1)
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
 		if err != nil {
-			log.Printf("Failed to generate new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-				err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
+			log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 			return err
 		}
 	}
 
 	_, err = from.SendTx(cli, tx)
 	if err != nil {
-		log.Printf("Failed to send new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d\n",
-			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
+		log.Printf("Failed to send new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d\n",
+			txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 	}
 	return err
 }

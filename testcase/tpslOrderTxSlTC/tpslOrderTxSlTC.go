@@ -93,8 +93,8 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 			return err
 		}
 	case 1:
-		side = orderbook.BUY
-		price = scaleUp(2)
+		side = orderbook.SELL
+		price = scaleUp(3)
 		quantity = scaleUp(1)
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
 		if err != nil {
@@ -103,7 +103,7 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 			return err
 		}
 	case 2:
-		side = orderbook.SELL
+		side = orderbook.BUY
 		price = scaleUp(2)
 		quantity = scaleUp(1)
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
@@ -114,7 +114,7 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		}
 	case 3:
 		side = orderbook.SELL
-		price = scaleUp(3)
+		price = scaleUp(2)
 		quantity = scaleUp(1)
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
 		if err != nil {

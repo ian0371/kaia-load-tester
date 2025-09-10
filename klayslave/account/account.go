@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -358,6 +359,10 @@ func (acc *Account) TransferSignedTxWithGuaranteeRetry(c *ethclient.Client, to *
 			break // Succeed, let's break the loop
 		}
 		log.Printf("Failed to execute: err=%s", err.Error())
+		if strings.Contains(err.Error(), "time nonce already exists") {
+			acc.timenonce = uint64(time.Now().UnixMilli()) - uint64(rand.Intn(1000))
+		}
+		log.Printf("Retrying...")
 		time.Sleep(1 * time.Second) // Mostly, the err is `txpool is full`, retry after a while.
 		// numChargedAcc, lastFailedNum = estimateRemainingTime(accGrp, numChargedAcc, lastFailedNum)
 	}

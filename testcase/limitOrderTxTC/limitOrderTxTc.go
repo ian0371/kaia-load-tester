@@ -97,8 +97,10 @@ func liquidityProvider(cli *ethclient.Client) {
 			from = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 		)
 
-		deficits := checkLiquidityDeficit(cli)
-		askDeficit, bidDeficit := deficits[0], deficits[1]
+		// skip check
+		// deficits := checkLiquidityDeficit(cli)
+		// askDeficit, bidDeficit := deficits[0], deficits[1]
+		askDeficit, bidDeficit := scaleUp(1e4), scaleUp(1e4)
 
 		if askDeficit.Sign() > 0 {
 			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.SELL, askLiquidityPrice, askDeficit, orderbook.LIMIT)
@@ -135,7 +137,7 @@ func liquidityProvider(cli *ethclient.Client) {
 func checkLiquidityDeficit(cli *ethclient.Client) []*big.Int {
 	c := cli.Client()
 	var aggs []*orderbook.Aggregated
-	c.CallContext(context.Background(), &aggs, "debug_getLvl2DataFromLvl3")
+	c.CallContext(context.Background(), &aggs, "debug_getLvl2Data")
 
 	symbol := baseToken + "/" + quoteToken
 	askQuantity := findQuantity(aggs, symbol, askLiquidityPrice, orderbook.SELL)

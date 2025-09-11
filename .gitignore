@@ -30,3 +30,8 @@ _testmain.go
 # Compiled KlaySlave
 klayslave/klayslave
 build/bin/
+
+node_modules/
+.env
+*.out
+*.txt

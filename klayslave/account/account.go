@@ -867,10 +867,36 @@ func ConcurrentTransactionSend(accs []*Account, transactionSend func(*Account)) 
 	wg.Wait()
 }
 
+const (
+	numChunks = 4
+)
+
+// calcTotalTxCount calculates the total number of transactions needed
+// for hierarchical distribution of n accounts with branching factor `numChunks`
+func calcTotalTxCount(n int) int {
+	if n <= numChunks {
+		return n // Base case: direct distribution
+	}
+
+	chunkSize := (n + numChunks - 1) / numChunks
+	totalTxs := numChunks
+
+	// Add transactions for each chunk recursively
+	for i := 0; i < numChunks; i++ {
+		start := i * chunkSize
+		end := min(start+chunkSize, n)
+		if start < n {
+			chunkN := end - start
+			totalTxs += calcTotalTxCount(chunkN)
+		}
+	}
+
+	return totalTxs
+}
+
 // HierarchicalDistribute calls sendTx in a hierarchical manner where each child can be parallelized.
 // rich -> richChild -> richChildChild -> ... -> accs[0..n]
-func HierarchicalDistribute(accs []*Account, from *Account, value *big.Int, sendTx func(from, to *Account, value *big.Int)) {
-	numChunks := 4
+func HierarchicalDistribute(accs []*Account, from *Account, value *big.Int, gasFee *big.Int, sendTx func(from, to *Account, value *big.Int)) {
 	if len(accs) <= numChunks {
 		// Base case: distribute directly
 		for _, acc := range accs {
@@ -891,6 +917,14 @@ func HierarchicalDistribute(accs []*Account, from *Account, value *big.Int, send
 		// Calculate total amount needed for child richAcc
 		chunkAmount := new(big.Int).Mul(value, big.NewInt(int64(len(chunkAccs))))
 
+		// Calculate total transactions needed for this chunk's hierarchy
+		// For n accounts with branching factor 4: ceil((n-1)/3) internal nodes + n leaf transactions
+		numTxs := calcTotalTxCount(len(chunkAccs))
+
+		// Add gas fees for all transactions in this chunk's hierarchy
+		totalGasFees := new(big.Int).Mul(gasFee, big.NewInt(int64(numTxs)))
+		chunkAmount = new(big.Int).Add(chunkAmount, totalGasFees)
+
 		// Create intermediate account and fund it
 		richChild := NewAccount(0)
 		sendTx(from, richChild, chunkAmount)
@@ -899,7 +933,7 @@ func HierarchicalDistribute(accs []*Account, from *Account, value *big.Int, send
 		wg.Add(1)
 		go func(child *Account, accounts []*Account) {
 			defer wg.Done()
-			HierarchicalDistribute(chunkAccs, richChild, value, sendTx)
+			HierarchicalDistribute(chunkAccs, richChild, value, gasFee, sendTx)
 		}(richChild, chunkAccs)
 	}
 

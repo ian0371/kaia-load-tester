@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
@@ -101,8 +102,27 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 		log.Fatalf("transfer for reservoir failed, localReservoir")
 	}
 
-	topupTokensToLocalReservoir := func() {
-		for _, token := range []string{"2", "3", "4", "5", "6", "7", "8", "9", "10"} {
+	targetTokens := []string{"2", "3"}
+	if cfg.InTheTcList("ethLegacyTxTC") {
+		targetTokens = []string{}
+	} else if cfg.InTheTcList("tokenTransferTxTC") {
+		targetTokens = []string{"2", "3", "4", "5", "6", "7", "8", "9", "10"}
+	}
+
+	// 3. charge KAIA
+	if cfg.InTheTcList("transferTxTC") || cfg.InTheTcList("ethLegacyTxTC") {
+		log.Printf("Start charging KLAY to test accounts because transferTxTC and/or ethLegacyTxTC is enabled")
+		accs := accGrp.GetValidAccGrp()
+		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
+		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
+		gasFee := big.NewInt(25e9 * 21000)
+		account.HierarchicalDistribute(accs, localReservoirAccount, cfg.GetChargeValue(), gasFee, func(from, to *account.Account, value *big.Int) {
+			from.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value)
+		})
+		log.Printf("Finished charging KLAY to %d test account(s)\n", len(accs))
+	} else {
+		// top up tokens to local reservoir
+		for _, token := range targetTokens {
 			tx = globalReservoirAccount.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e18)), token)
 			receipt, err = bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
 			if err != nil {
@@ -112,38 +132,15 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 				log.Fatalf("transfer for reservoir failed, localReservoir")
 			}
 		}
-	}
 
-	// 3. charge KAIA
-	if cfg.InTheTcList("transferTxTC") || cfg.InTheTcList("ethLegacyTxTC") {
-		log.Printf("Start charging KLAY to test accounts because transferTxTC and/or ethLegacyTxTC is enabled")
+		log.Printf("Start charging Tokens [%s] to test accounts", strings.Join(targetTokens, ","))
 		accs := accGrp.GetValidAccGrp()
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
-		account.HierarchicalDistribute(accs, localReservoirAccount, cfg.GetChargeValue(), func(from, to *account.Account, value *big.Int) {
-			from.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value)
-		})
-		log.Printf("Finished charging KLAY to %d test account(s)\n", len(accs))
-	} else if cfg.InTheTcList("tokenTransferTxTC") {
-		topupTokensToLocalReservoir()
-		log.Printf("Start charging all Tokens [2-10] to test accounts")
-		accs := accGrp.GetValidAccGrp()
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
-		for _, token := range []string{"2", "3", "4", "5", "6", "7", "8", "9", "10"} {
-			account.HierarchicalDistribute(accs, localReservoirAccount, new(big.Int).Mul(big.NewInt(1e10), big.NewInt(1e18)), func(from, to *account.Account, value *big.Int) {
-				from.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value, token)
-			})
-			log.Printf("Finished charging Token \"%s\" to %d test account(s)\n", token, len(accs))
-		}
-	} else {
-		topupTokensToLocalReservoir()
-		log.Printf("Start charging Token [2-3] to test accounts")
-		accs := accGrp.GetValidAccGrp()
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
-		for _, token := range []string{"2", "3"} {
-			account.HierarchicalDistribute(accs, localReservoirAccount, new(big.Int).Mul(big.NewInt(1e10), big.NewInt(1e18)), func(from, to *account.Account, value *big.Int) {
+		for _, token := range targetTokens {
+			value := new(big.Int).Mul(big.NewInt(1e10), big.NewInt(1e18))
+			gasFee := big.NewInt(25e9 * 21000)
+			account.HierarchicalDistribute(accs, localReservoirAccount, value, gasFee, func(from, to *account.Account, value *big.Int) {
 				from.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value, token)
 			})
 			log.Printf("Finished charging Token \"%s\" to %d test account(s)\n", token, len(accs))

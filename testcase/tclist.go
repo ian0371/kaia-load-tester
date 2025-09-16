@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
+	"github.com/kaiachain/kaia-load-tester/testcase/ethLegacyTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/limitOrderTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/marketOrderTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/sessionTxTC"
@@ -24,6 +25,12 @@ type ExtendedTaskSet []*ExtendedTask
 
 // TcList initializes TCs and returns a slice of TCs.
 var TcList = map[string]*ExtendedTask{
+	ethLegacyTxTC.Name: {
+		Name:   ethLegacyTxTC.Name,
+		Weight: 10,
+		Fn:     ethLegacyTxTC.Run,
+		Init:   ethLegacyTxTC.Init,
+	},
 	sessionTxTC.Name: {
 		Name:   sessionTxTC.Name,
 		Weight: 10,

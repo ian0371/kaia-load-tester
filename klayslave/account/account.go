@@ -432,6 +432,29 @@ func (acc *Account) RegisterNewSession(c *ethclient.Client) error {
 	return nil
 }
 
+func (acc *Account) GenLegacyTx(to *Account, value *big.Int, input []byte) (*types.Transaction, error) {
+	acc.mutex.Lock()
+	defer acc.mutex.Unlock()
+	acc.timenonce++
+
+	tx := types.NewTransaction(
+		acc.timenonce,
+		to.GetAddress(),
+		value,
+		0,
+		common.Big0,
+		input,
+	)
+
+	signer := types.LatestSignerForChainID(chainID)
+	tx, err := types.SignTx(tx, signer, acc.privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
 func (acc *Account) GenSessionCreateTx() (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()

@@ -113,8 +113,8 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 	}
 
 	// 3. charge KAIA
-	if cfg.InTheTcList("transferTxTC") {
-		log.Printf("Start charging KLAY to test accounts because transferTxTC is enabled")
+	if cfg.InTheTcList("transferTxTC") || cfg.InTheTcList("ethLegacyTxTC") {
+		log.Printf("Start charging KLAY to test accounts because transferTxTC and/or ethLegacyTxTC is enabled")
 		accs := accGrp.GetValidAccGrp()
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation

@@ -435,10 +435,9 @@ func (acc *Account) RegisterNewSession(c *ethclient.Client) error {
 func (acc *Account) GenLegacyTx(to *Account, value *big.Int, input []byte) (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
-	acc.timenonce++
 
 	tx := types.NewTransaction(
-		acc.timenonce,
+		acc.nonce,
 		to.GetAddress(),
 		value,
 		0,
@@ -451,6 +450,7 @@ func (acc *Account) GenLegacyTx(to *Account, value *big.Int, input []byte) (*typ
 	if err != nil {
 		return nil, err
 	}
+	acc.nonce++
 
 	return tx, nil
 }

@@ -440,8 +440,8 @@ func (acc *Account) GenLegacyTx(to *Account, value *big.Int, input []byte) (*typ
 		acc.nonce,
 		to.GetAddress(),
 		value,
-		0,
-		common.Big0,
+		21000,
+		big.NewInt(25e9),
 		input,
 	)
 

@@ -30,7 +30,7 @@ var (
 	// LP settings
 	askLiquidityPrice = scaleUp(3)
 	bidLiquidityPrice = scaleUp(2)
-	minQuantity       = scaleUp(1e6)
+	minQuantity       = scaleUp(1e3)
 	pollInterval      = 3 * time.Second // LP checks and fills liquidity every pollInterval
 
 	// User settings
@@ -100,7 +100,7 @@ func liquidityProvider(cli *ethclient.Client) {
 		// skip check
 		// deficits := checkLiquidityDeficit(cli)
 		// askDeficit, bidDeficit := deficits[0], deficits[1]
-		askDeficit, bidDeficit := scaleUp(1e3), scaleUp(1e3)
+		askDeficit, bidDeficit := minQuantity, minQuantity
 
 		if askDeficit.Sign() > 0 {
 			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.SELL, askLiquidityPrice, askDeficit, orderbook.LIMIT)

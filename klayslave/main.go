@@ -101,14 +101,16 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 		log.Fatalf("transfer for reservoir failed, localReservoir")
 	}
 
-	for _, token := range []string{"2", "3", "4", "5", "6", "7", "8", "9", "10"} {
-		tx = globalReservoirAccount.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e18)), token)
-		receipt, err = bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
-		if err != nil {
-			log.Fatalf("receipt failed, err:%v", err.Error())
-		}
-		if receipt.Status != 1 {
-			log.Fatalf("transfer for reservoir failed, localReservoir")
+	topupTokensToLocalReservoir := func() {
+		for _, token := range []string{"2", "3", "4", "5", "6", "7", "8", "9", "10"} {
+			tx = globalReservoirAccount.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e18)), token)
+			receipt, err = bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
+			if err != nil {
+				log.Fatalf("receipt failed, err:%v", err.Error())
+			}
+			if receipt.Status != 1 {
+				log.Fatalf("transfer for reservoir failed, localReservoir")
+			}
 		}
 	}
 
@@ -123,6 +125,7 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 		})
 		log.Printf("Finished charging KLAY to %d test account(s)\n", len(accs))
 	} else if cfg.InTheTcList("tokenTransferTxTC") {
+		topupTokensToLocalReservoir()
 		log.Printf("Start charging all Tokens [2-10] to test accounts")
 		accs := accGrp.GetValidAccGrp()
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
@@ -134,6 +137,7 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 			log.Printf("Finished charging Token \"%s\" to %d test account(s)\n", token, len(accs))
 		}
 	} else {
+		topupTokensToLocalReservoir()
 		log.Printf("Start charging Token [2-3] to test accounts")
 		accs := accGrp.GetValidAccGrp()
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation

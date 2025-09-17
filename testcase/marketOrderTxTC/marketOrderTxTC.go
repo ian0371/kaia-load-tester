@@ -6,12 +6,12 @@ import (
 	"math/big"
 	"math/rand"
 	"slices"
+	"strconv"
 	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/orderbook"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/holiman/uint256"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
 	"github.com/kaiachain/kaia-load-tester/klayslave/clipool"
 	"github.com/myzhan/boomer"
@@ -28,14 +28,14 @@ var (
 	cursor uint32
 
 	// LP settings
-	askLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(3)))   // $3
-	bidLiquidityPrice *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(2)))   // $2
-	minQuantity       *uint256.Int = new(uint256.Int).Mul(base, uint256.NewInt(uint64(1e6))) // 1M
+	askLiquidityPrice = scaleUp(3)
+	bidLiquidityPrice = scaleUp(2)
+	minQuantity       = scaleUp(1e6)
+	pollInterval      = 10 * time.Second // LP checks and fills liquidity every pollInterval
 
 	// User settings
 	baseToken  = "2"
 	quoteToken = "3"
-	base       = uint256.NewInt(uint64(1e18))
 	orderType  = orderbook.MARKET
 )
 
@@ -64,16 +64,14 @@ func Run() {
 	defer cliPool.Free(cli)
 
 	var (
-		from           = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		priceOffset    = uint256.NewInt(uint64(rand.Intn(5) + 3))
-		quantityOffset = uint256.NewInt(uint64(rand.Intn(5) + 3))
-		price          = new(uint256.Int).Mul(base, priceOffset)
-		quantity       = new(uint256.Int).Mul(base, quantityOffset)
-		side           = orderbook.Side(rand.Intn(2))
+		from     = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
+		quantity = scaleUp(1)
+		side     = orderbook.Side(rand.Intn(2))
+		price    = scaleUp(3 - int64(side)) // If buy, $3. If sell, $2.
 	)
 
 	start := boomer.Now()
-	tx, err := from.GenNewOrderTx(baseToken, quoteToken, side, price.ToBig(), quantity.ToBig(), orderType)
+	tx, err := from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
 	if err != nil {
 		log.Printf("Failed to generate new order tx: error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 			err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
@@ -99,11 +97,13 @@ func liquidityProvider(cli *ethclient.Client) {
 			from = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 		)
 
-		deficits := checkLiquidityDeficit(cli)
-		askDeficit, bidDeficit := deficits[0], deficits[1]
+		// skip check
+		// deficits := checkLiquidityDeficit(cli)
+		// askDeficit, bidDeficit := deficits[0], deficits[1]
+		askDeficit, bidDeficit := minQuantity, minQuantity
 
 		if askDeficit.Sign() > 0 {
-			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.ToBig(), askDeficit.ToBig(), orderbook.LIMIT)
+			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.SELL, askLiquidityPrice, askDeficit, orderbook.LIMIT)
 			if err != nil {
 				log.Printf("Failed to generate LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.String(), askDeficit.String(), orderbook.LIMIT)
@@ -116,7 +116,7 @@ func liquidityProvider(cli *ethclient.Client) {
 			log.Printf("Sent ask side LP order: price=%s, quantity=%s", askLiquidityPrice.String(), askDeficit.String())
 		}
 		if bidDeficit.Sign() > 0 {
-			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.ToBig(), bidDeficit.ToBig(), orderbook.LIMIT)
+			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice, bidDeficit, orderbook.LIMIT)
 			if err != nil {
 				log.Printf("Failed to generate LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.String(), bidDeficit.String(), orderbook.LIMIT)
@@ -134,35 +134,35 @@ func liquidityProvider(cli *ethclient.Client) {
 }
 
 // checkLiquidityDeficit returns [askDeficit, bidDeficit]
-func checkLiquidityDeficit(cli *ethclient.Client) []*uint256.Int {
+func checkLiquidityDeficit(cli *ethclient.Client) []*big.Int {
 	c := cli.Client()
 	var aggs []*orderbook.Aggregated
-	c.CallContext(context.Background(), &aggs, "debug_getLvl2DataFromLvl3")
+	c.CallContext(context.Background(), &aggs, "debug_getLvl2Data")
 
 	symbol := baseToken + "/" + quoteToken
 	askQuantity := findQuantity(aggs, symbol, askLiquidityPrice, orderbook.SELL)
 	bidQuantity := findQuantity(aggs, symbol, bidLiquidityPrice, orderbook.BUY)
 
-	askDeficit := new(uint256.Int).Sub(minQuantity, askQuantity)
+	askDeficit := new(big.Int).Sub(minQuantity, askQuantity)
 	if askDeficit.Sign() < 0 {
-		askDeficit = uint256.NewInt(0)
+		askDeficit = big.NewInt(0)
 	}
 
-	bidDeficit := new(uint256.Int).Sub(minQuantity, bidQuantity)
+	bidDeficit := new(big.Int).Sub(minQuantity, bidQuantity)
 	if bidDeficit.Sign() < 0 {
-		bidDeficit = uint256.NewInt(0)
+		bidDeficit = big.NewInt(0)
 	}
 
-	return []*uint256.Int{askDeficit, bidDeficit}
+	return []*big.Int{askDeficit, bidDeficit}
 }
 
-func findQuantity(aggs []*orderbook.Aggregated, symbol string, price *uint256.Int, side orderbook.Side) *uint256.Int {
+func findQuantity(aggs []*orderbook.Aggregated, symbol string, price *big.Int, side orderbook.Side) *big.Int {
 	aggIdx := slices.IndexFunc(aggs, func(a *orderbook.Aggregated) bool {
 		return a.Symbol == symbol
 	})
 	if aggIdx == -1 {
 		log.Printf("Symbol not found: %s. Regarding quantity as zero.", symbol)
-		return uint256.NewInt(0)
+		return big.NewInt(0)
 	}
 
 	agg := aggs[aggIdx]
@@ -174,20 +174,23 @@ func findQuantity(aggs []*orderbook.Aggregated, symbol string, price *uint256.In
 		arr = agg.Bids
 	} else {
 		log.Printf("Invalid side: %d. Regarding quantity as zero.", side)
-		return uint256.NewInt(0)
+		return big.NewInt(0)
 	}
 
 	arrIdx := slices.IndexFunc(arr, func(a []string) bool {
-		p, _ := uint256.FromDecimal(a[0])
-		p = new(uint256.Int).Mul(base, p)
+		s, _ := strconv.ParseInt(a[0], 10, 64)
+		p := scaleUp(s)
 		return p.Cmp(price) == 0
 	})
 	if arrIdx == -1 {
 		log.Printf("Price not found: %s. Regarding quantity as zero.", price.String())
-		return uint256.NewInt(0)
+		return big.NewInt(0)
 	}
 
-	quantity, _ := uint256.FromDecimal(arr[arrIdx][1])
-	quantity = new(uint256.Int).Mul(base, quantity)
-	return quantity
+	quantity, _ := strconv.ParseInt(arr[arrIdx][1], 10, 64)
+	return scaleUp(quantity)
+}
+
+func scaleUp(x int64) *big.Int {
+	return new(big.Int).Mul(big.NewInt(x), big.NewInt(1e18))
 }

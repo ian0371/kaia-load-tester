@@ -63,7 +63,7 @@ func Run() {
 				boomer.RecordSuccess("http", "SendCancelOrderTx"+" to "+endPoint, elapsed, int64(10))
 			}
 		} else {
-
+			boomer.RecordSuccess("http", "SendCancelOrderTx"+" to "+endPoint, elapsed, int64(10))
 		}
 	} else {
 		boomer.RecordFailure("http", "SendCancelOrderTx"+" to "+endPoint, elapsed, err.Error())

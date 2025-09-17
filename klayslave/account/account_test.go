@@ -25,7 +25,7 @@ func TestHierarchicalDistributeTransfer(t *testing.T) {
 	}
 
 	t.Logf("rich: %s, balance: %d", rich.GetAddress().Hex(), balanceMap[rich.GetAddress()])
-	HierarchicalDistribute(accs, rich, value, func(from, to *Account, value *big.Int) {
+	HierarchicalDistribute(accs, rich, value, big.NewInt(0), func(from, to *Account, value *big.Int) {
 		if from == nil || to == nil || value == nil {
 			t.Fatalf("all must not be nil, from: %v, to: %v, value: %v", from, to, value)
 		}

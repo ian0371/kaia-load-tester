@@ -679,7 +679,7 @@ func (acc *Account) GenNewStopOrderTx(baseToken string, quoteToken string, side 
 	return tx, nil
 }
 
-func (acc *Account) GenNewCancelAllTx() (*types.Transaction, error) {
+func (acc *Account) GenCancelAllTx() (*types.Transaction, error) {
 	acc.mutex.Lock()
 	defer acc.mutex.Unlock()
 	acc.timenonce++

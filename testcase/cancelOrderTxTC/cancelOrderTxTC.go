@@ -58,7 +58,7 @@ func Run() {
 	elapsed := boomer.Now() - start
 
 	if err == nil {
-		if txType == 1 {
+		if txType == 0 {
 			for range 3 {
 				boomer.RecordSuccess("http", "SendCancelOrderTx"+" to "+endPoint, elapsed, int64(10))
 			}

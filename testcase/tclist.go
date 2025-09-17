@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
+	"github.com/kaiachain/kaia-load-tester/testcase/cancelOrderTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/ethLegacyTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/limitOrderTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/marketOrderTxTC"
@@ -78,5 +79,11 @@ var TcList = map[string]*ExtendedTask{
 		Weight: 10,
 		Fn:     tpslOrderTxSlTC.Run,
 		Init:   tpslOrderTxSlTC.Init,
+	},
+	cancelOrderTxTC.Name: {
+		Name:   cancelOrderTxTC.Name,
+		Weight: 10,
+		Fn:     cancelOrderTxTC.Run,
+		Init:   cancelOrderTxTC.Init,
 	},
 }

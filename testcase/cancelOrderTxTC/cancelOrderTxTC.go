@@ -54,23 +54,17 @@ func Run() {
 	from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 
 	start := boomer.Now()
-	txType, err := SendRandomTx(cli, from)
+	err := SendRandomTx(cli, from)
 	elapsed := boomer.Now() - start
 
 	if err == nil {
-		if txType == 0 {
-			for range 3 {
-				boomer.RecordSuccess("http", "SendCancelOrderTx"+" to "+endPoint, elapsed, int64(10))
-			}
-		} else {
-			boomer.RecordSuccess("http", "SendCancelOrderTx"+" to "+endPoint, elapsed, int64(10))
-		}
+		boomer.RecordSuccess("http", "SendCancelOrderTx"+" to "+endPoint, elapsed, int64(10))
 	} else {
 		boomer.RecordFailure("http", "SendCancelOrderTx"+" to "+endPoint, elapsed, err.Error())
 	}
 }
 
-func SendRandomTx(cli *ethclient.Client, from *account.Account) (int, error) {
+func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 	var (
 		side      orderbook.Side
 		price     *big.Int
@@ -89,18 +83,16 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) (int, error) {
 	randNum := rand.Intn(100)
 
 	switch {
-	case randNum < 40: // 40% - tx1: create $1 BUY x 3
+	case randNum < 40:
 		txType = 0
 		side = orderbook.BUY
 		price = scaleUp(1)
 		quantity = scaleUp(1)
-		for range 3 {
-			tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
-			if err != nil {
-				log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-					txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
-				return txType, err
-			}
+		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
+		if err != nil {
+			log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
+			return err
 		}
 	case randNum < 50: // 10% - tx2: cancel all
 		txType = 1
@@ -108,7 +100,7 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) (int, error) {
 		if err != nil {
 			log.Printf("Failed to generate cancel all orders tx (type%d): error=%v, baseToken=%s, quoteToken=%s",
 				txType, err, baseToken, quoteToken)
-			return txType, err
+			return err
 		}
 	case randNum < 75: // 25% - tx3: create $2 BUY
 		txType = 2
@@ -119,7 +111,7 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) (int, error) {
 		if err != nil {
 			log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
-			return txType, err
+			return err
 		}
 	default: // 25% - tx4: create $2 SELL
 		txType = 3
@@ -130,7 +122,7 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) (int, error) {
 		if err != nil {
 			log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
-			return txType, err
+			return err
 		}
 	}
 
@@ -144,7 +136,7 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) (int, error) {
 				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 		}
 	}
-	return txType, err
+	return err
 }
 
 func scaleUp(x int64) *big.Int {

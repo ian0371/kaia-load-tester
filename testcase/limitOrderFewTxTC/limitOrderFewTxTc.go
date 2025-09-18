@@ -104,10 +104,10 @@ func liquidityProvider(cli *ethclient.Client) {
 	var (
 		askLiquidityPrice = scaleUp(3)
 		bidLiquidityPrice = scaleUp(2)
-		minQuantity       = scaleUp(1e3)
-		pollInterval      = 2 * time.Second // LP checks and fills liquidity every pollInterval
-		splitCount        = 1               // How many orders should LP make for each liquidity provision
-		fillDeficitOnly   = false           // If true, LP checks deficit from orderbook status. If false, minQuantity is filled.
+		minQuantity       = scaleUp(1e6)
+		splitCount        = 1                 // How many orders should LP make for each liquidity provision
+		pollInterval      = 100 * time.Second // LP checks and fills liquidity every pollInterval
+		fillDeficitOnly   = false             // If true, LP checks deficit from orderbook status. If false, minQuantity is filled.
 	)
 
 	for {

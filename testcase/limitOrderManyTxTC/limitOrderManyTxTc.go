@@ -89,8 +89,8 @@ func provideInitialLiquidity(cli *ethclient.Client) {
 	var (
 		askLiquidityPrice = scaleUp(3)
 		bidLiquidityPrice = scaleUp(2)
-		initialQuantity   = scaleUp(1e6)
-		splitCount        = int(1e5) // How many orders should LP make for each liquidity provision
+		initialQuantity   = scaleUp(1e4)
+		splitCount        = int(1e4) // How many orders should LP make for each liquidity provision
 		from              = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 	)
 
@@ -104,9 +104,9 @@ func liquidityProvider(cli *ethclient.Client) {
 	var (
 		askLiquidityPrice = scaleUp(3)
 		bidLiquidityPrice = scaleUp(2)
-		minQuantity       = scaleUp(1e3)
+		minQuantity       = scaleUp(250)
 		pollInterval      = 2 * time.Second // LP checks and fills liquidity every pollInterval
-		splitCount        = 100             // How many orders should LP make for each liquidity provision
+		splitCount        = 250             // How many orders should LP make for each liquidity provision
 		fillDeficitOnly   = false           // If true, LP checks deficit from orderbook status. If false, minQuantity is filled.
 	)
 

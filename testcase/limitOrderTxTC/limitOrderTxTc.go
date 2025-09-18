@@ -31,7 +31,9 @@ var (
 	askLiquidityPrice = scaleUp(3)
 	bidLiquidityPrice = scaleUp(2)
 	minQuantity       = scaleUp(1e3)
-	pollInterval      = 3 * time.Second // LP checks and fills liquidity every pollInterval
+	pollInterval      = 2 * time.Second // LP checks and fills liquidity every pollInterval
+	splitCount        = 100             // How many orders should LP make for each liquidity provision
+	fillDeficitOnly   = false           // If true, LP checks deficit from orderbook status. If false, minQuantity is filled.
 
 	// User settings
 	baseToken  = "2"
@@ -97,39 +99,38 @@ func liquidityProvider(cli *ethclient.Client) {
 			from = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 		)
 
-		// skip check
-		// deficits := checkLiquidityDeficit(cli)
-		// askDeficit, bidDeficit := deficits[0], deficits[1]
 		askDeficit, bidDeficit := minQuantity, minQuantity
+		if fillDeficitOnly {
+			deficits := checkLiquidityDeficit(cli)
+			askDeficit, bidDeficit = deficits[0], deficits[1]
+		}
 
 		if askDeficit.Sign() > 0 {
-			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.SELL, askLiquidityPrice, askDeficit, orderbook.LIMIT)
-			if err != nil {
-				log.Printf("Failed to generate LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.String(), askDeficit.String(), orderbook.LIMIT)
-			}
-			_, err = from.SendTx(cli, tx)
-			if err != nil {
-				log.Printf("Failed to send LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.SELL, askLiquidityPrice.String(), askDeficit.String(), orderbook.LIMIT)
-			}
+			provideLiquidity(cli, from, orderbook.SELL, askLiquidityPrice, askDeficit)
 			log.Printf("Sent ask side LP order: price=%s, quantity=%s", askLiquidityPrice.String(), askDeficit.String())
 		}
 		if bidDeficit.Sign() > 0 {
-			tx, err := from.GenNewOrderTx(baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice, bidDeficit, orderbook.LIMIT)
-			if err != nil {
-				log.Printf("Failed to generate LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.String(), bidDeficit.String(), orderbook.LIMIT)
-			}
-			_, err = from.SendTx(cli, tx)
-			if err != nil {
-				log.Printf("Failed to send LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-					err, from.GetAddress().Hex(), baseToken, quoteToken, orderbook.BUY, bidLiquidityPrice.String(), bidDeficit.String(), orderbook.LIMIT)
-			}
+			provideLiquidity(cli, from, orderbook.BUY, bidLiquidityPrice, bidDeficit)
 			log.Printf("Sent bid side LP order: price=%s, quantity=%s", bidLiquidityPrice.String(), bidDeficit.String())
 		}
 
 		time.Sleep(pollInterval)
+	}
+}
+
+func provideLiquidity(cli *ethclient.Client, from *account.Account, side orderbook.Side, price *big.Int, quantity *big.Int) {
+	q := new(big.Int).Div(quantity, big.NewInt(int64(splitCount)))
+	for i := 0; i < splitCount; i++ {
+		tx, err := from.GenNewOrderTx(baseToken, quoteToken, side, price, q, orderbook.LIMIT)
+		if err != nil {
+			log.Printf("Failed to generate LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+				err, from.GetAddress().Hex(), baseToken, quoteToken, side, price.String(), q.String(), orderbook.LIMIT)
+		}
+		_, err = from.SendTx(cli, tx)
+		if err != nil {
+			log.Printf("Failed to send LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+				err, from.GetAddress().Hex(), baseToken, quoteToken, side, price.String(), q.String(), orderbook.LIMIT)
+		}
 	}
 }
 

@@ -90,17 +90,12 @@ func provideInitialLiquidity(cli *ethclient.Client) {
 		askLiquidityPrice = scaleUp(3)
 		bidLiquidityPrice = scaleUp(2)
 		initialQuantity   = scaleUp(1e6)
-		splitCount        = int(1e6) // How many orders should LP make for each liquidity provision
+		splitCount        = int(1e5) // How many orders should LP make for each liquidity provision
 		from              = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
 	)
 
-	for i := 0; i < splitCount; i++ {
-		provideLiquidity(cli, from, orderbook.SELL, askLiquidityPrice, initialQuantity, splitCount)
-		provideLiquidity(cli, from, orderbook.BUY, bidLiquidityPrice, initialQuantity, splitCount)
-		if (i+1)%1000 == 0 {
-			log.Printf("Sent %d/%d initial liquidity orders", i+1, splitCount)
-		}
-	}
+	provideLiquidity(cli, from, orderbook.SELL, askLiquidityPrice, initialQuantity, splitCount)
+	provideLiquidity(cli, from, orderbook.BUY, bidLiquidityPrice, initialQuantity, splitCount)
 }
 
 // lp watches order status, and provides liquidity when liquidity is needed.

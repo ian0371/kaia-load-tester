@@ -1,4 +1,4 @@
-package limitOrderTxTC
+package limitOrderFewTxTC
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"github.com/myzhan/boomer"
 )
 
-const Name = "limitOrderTxTC"
+const Name = "limitOrderFewTxTC"
 
 var (
 	endPoint string
@@ -26,14 +26,6 @@ var (
 	cliPool  clipool.ClientPool
 
 	cursor uint32
-
-	// LP settings
-	askLiquidityPrice = scaleUp(3)
-	bidLiquidityPrice = scaleUp(2)
-	minQuantity       = scaleUp(1e3)
-	pollInterval      = 2 * time.Second // LP checks and fills liquidity every pollInterval
-	splitCount        = 100             // How many orders should LP make for each liquidity provision
-	fillDeficitOnly   = false           // If true, LP checks deficit from orderbook status. If false, minQuantity is filled.
 
 	// User settings
 	baseToken  = "2"
@@ -58,7 +50,9 @@ func Init(accs []*account.Account, endpoint string, _ *big.Int) {
 
 	nAcc = len(accGrp)
 
-	go liquidityProvider(cliPool.Alloc().(*ethclient.Client))
+	cli := cliPool.Alloc().(*ethclient.Client)
+	provideInitialLiquidity(cli)
+	go liquidityProvider(cli)
 }
 
 func Run() {
@@ -91,9 +85,31 @@ func Run() {
 	boomer.RecordSuccess("http", "SendNewOrderTx"+" to "+endPoint, elapsed, int64(10))
 }
 
+func provideInitialLiquidity(cli *ethclient.Client) {
+	var (
+		askLiquidityPrice = scaleUp(3)
+		bidLiquidityPrice = scaleUp(2)
+		initialQuantity   = scaleUp(1e6)
+		splitCount        = 1 // How many orders should LP make for each liquidity provision
+		from              = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
+	)
+
+	provideLiquidity(cli, from, orderbook.SELL, askLiquidityPrice, initialQuantity, splitCount)
+	provideLiquidity(cli, from, orderbook.BUY, bidLiquidityPrice, initialQuantity, splitCount)
+}
+
 // lp watches order status, and provides liquidity when liquidity is needed.
 // liquidity orders: BUY at $2, SELL at $3
 func liquidityProvider(cli *ethclient.Client) {
+	var (
+		askLiquidityPrice = scaleUp(3)
+		bidLiquidityPrice = scaleUp(2)
+		minQuantity       = scaleUp(1e3)
+		pollInterval      = 2 * time.Second // LP checks and fills liquidity every pollInterval
+		splitCount        = 1               // How many orders should LP make for each liquidity provision
+		fillDeficitOnly   = false           // If true, LP checks deficit from orderbook status. If false, minQuantity is filled.
+	)
+
 	for {
 		var (
 			from = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
@@ -101,16 +117,16 @@ func liquidityProvider(cli *ethclient.Client) {
 
 		askDeficit, bidDeficit := minQuantity, minQuantity
 		if fillDeficitOnly {
-			deficits := checkLiquidityDeficit(cli)
+			deficits := checkLiquidityDeficit(cli, askLiquidityPrice, bidLiquidityPrice, minQuantity)
 			askDeficit, bidDeficit = deficits[0], deficits[1]
 		}
 
 		if askDeficit.Sign() > 0 {
-			provideLiquidity(cli, from, orderbook.SELL, askLiquidityPrice, askDeficit)
+			provideLiquidity(cli, from, orderbook.SELL, askLiquidityPrice, askDeficit, splitCount)
 			log.Printf("Sent ask side LP order: price=%s, quantity=%s", askLiquidityPrice.String(), askDeficit.String())
 		}
 		if bidDeficit.Sign() > 0 {
-			provideLiquidity(cli, from, orderbook.BUY, bidLiquidityPrice, bidDeficit)
+			provideLiquidity(cli, from, orderbook.BUY, bidLiquidityPrice, bidDeficit, splitCount)
 			log.Printf("Sent bid side LP order: price=%s, quantity=%s", bidLiquidityPrice.String(), bidDeficit.String())
 		}
 
@@ -118,7 +134,7 @@ func liquidityProvider(cli *ethclient.Client) {
 	}
 }
 
-func provideLiquidity(cli *ethclient.Client, from *account.Account, side orderbook.Side, price *big.Int, quantity *big.Int) {
+func provideLiquidity(cli *ethclient.Client, from *account.Account, side orderbook.Side, price *big.Int, quantity *big.Int, splitCount int) {
 	q := new(big.Int).Div(quantity, big.NewInt(int64(splitCount)))
 	for i := 0; i < splitCount; i++ {
 		tx, err := from.GenNewOrderTx(baseToken, quoteToken, side, price, q, orderbook.LIMIT)
@@ -135,7 +151,7 @@ func provideLiquidity(cli *ethclient.Client, from *account.Account, side orderbo
 }
 
 // checkLiquidityDeficit returns [askDeficit, bidDeficit]
-func checkLiquidityDeficit(cli *ethclient.Client) []*big.Int {
+func checkLiquidityDeficit(cli *ethclient.Client, askLiquidityPrice *big.Int, bidLiquidityPrice *big.Int, minQuantity *big.Int) []*big.Int {
 	c := cli.Client()
 	var aggs []*orderbook.Aggregated
 	c.CallContext(context.Background(), &aggs, "debug_getLvl2Data")

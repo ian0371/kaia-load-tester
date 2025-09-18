@@ -6,7 +6,8 @@ import (
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
 	"github.com/kaiachain/kaia-load-tester/testcase/cancelOrderTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/ethLegacyTxTC"
-	"github.com/kaiachain/kaia-load-tester/testcase/limitOrderTxTC"
+	"github.com/kaiachain/kaia-load-tester/testcase/limitOrderFewTxTC"
+	"github.com/kaiachain/kaia-load-tester/testcase/limitOrderManyTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/marketOrderTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/sessionTxTC"
 	"github.com/kaiachain/kaia-load-tester/testcase/stopOrderTxTC"
@@ -50,11 +51,17 @@ var TcList = map[string]*ExtendedTask{
 		Fn:     tokenTransferTxTC.Run,
 		Init:   tokenTransferTxTC.Init,
 	},
-	limitOrderTxTC.Name: {
-		Name:   limitOrderTxTC.Name,
+	limitOrderFewTxTC.Name: {
+		Name:   limitOrderFewTxTC.Name,
 		Weight: 10,
-		Fn:     limitOrderTxTC.Run,
-		Init:   limitOrderTxTC.Init,
+		Fn:     limitOrderFewTxTC.Run,
+		Init:   limitOrderFewTxTC.Init,
+	},
+	limitOrderManyTxTC.Name: {
+		Name:   limitOrderManyTxTC.Name,
+		Weight: 10,
+		Fn:     limitOrderManyTxTC.Run,
+		Init:   limitOrderManyTxTC.Init,
 	},
 	marketOrderTxTC.Name: {
 		Name:   marketOrderTxTC.Name,

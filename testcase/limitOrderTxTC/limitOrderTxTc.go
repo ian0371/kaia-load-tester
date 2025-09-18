@@ -1,4 +1,4 @@
-package marketOrderTxTC
+package limitOrderTxTC
 
 import (
 	"log"
@@ -14,7 +14,7 @@ import (
 	"github.com/myzhan/boomer"
 )
 
-const Name = "marketOrderTxTC"
+const Name = "limitOrderTxTC"
 
 var (
 	endPoint string
@@ -70,7 +70,7 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		price     *big.Int
 		quantity  *big.Int
 		tx        *types.Transaction
-		orderType = orderbook.MARKET
+		orderType = orderbook.LIMIT
 		err       error
 		txType    int
 	)
@@ -78,8 +78,8 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 	// Cancel order scenario implementation (probability in parenthesis):
 	// - tx1: provide liquidity ($2 BUY Q10)
 	// - tx2: provide liquidity ($3 SELL Q10)
-	// - tx3: take liquidity (Market SELL Q1)
-	// - tx4: take liquidity (Market BUY Q1)
+	// - tx3: take liquidity ($2 SELL Q1)
+	// - tx4: take liquidity ($3 BUY Q1)
 	randNum := rand.Intn(100)
 	switch {
 	case randNum < 10:
@@ -87,10 +87,9 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		side = orderbook.BUY
 		price = scaleUp(2)
 		quantity = scaleUp(10)
-		orderType = orderbook.LIMIT
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
 		if err != nil {
-			log.Printf("Failed to generate new limit order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+			log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 			return err
 		}
@@ -99,32 +98,31 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		side = orderbook.SELL
 		price = scaleUp(3)
 		quantity = scaleUp(10)
-		orderType = orderbook.LIMIT
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
 		if err != nil {
-			log.Printf("Failed to generate new limit order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+			log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 			return err
 		}
 	case randNum < 60:
 		txType = 2
 		side = orderbook.SELL
-		price = scaleUp(0)
+		price = scaleUp(2)
 		quantity = scaleUp(1)
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
 		if err != nil {
-			log.Printf("Failed to generate new market order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+			log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 			return err
 		}
 	default:
 		txType = 3
 		side = orderbook.BUY
-		price = scaleUp(0)
+		price = scaleUp(3)
 		quantity = scaleUp(1)
 		tx, err = from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)
 		if err != nil {
-			log.Printf("Failed to generate new market order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
+			log.Printf("Failed to generate new order tx (type%d): error=%v, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
 				txType, err, baseToken, quoteToken, side, price.String(), quantity.String(), orderType)
 			return err
 		}

@@ -1,4 +1,4 @@
-package limitOrderFewTxTC
+package limitOrderTxTC
 
 import (
 	"bytes"
@@ -35,10 +35,11 @@ func TestNewOrderTxTC(t *testing.T) {
 
 func TestGenOrderTx(t *testing.T) {
 	var (
-		from     = account.NewAccount(0)
-		side     = orderbook.BUY
-		price    = big.NewInt(2e18)
-		quantity = big.NewInt(1e18)
+		from      = account.NewAccount(0)
+		side      = orderbook.BUY
+		price     = big.NewInt(2e18)
+		quantity  = big.NewInt(1e18)
+		orderType = orderbook.LIMIT
 	)
 
 	tx, err := from.GenNewOrderTx(baseToken, quoteToken, side, price, quantity, orderType)

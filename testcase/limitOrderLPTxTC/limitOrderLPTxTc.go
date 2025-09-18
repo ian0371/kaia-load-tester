@@ -1,12 +1,14 @@
-package limitOrderManyTxTC
+package limitOrderLPTxTC
 
 import (
 	"context"
 	"log"
 	"math/big"
 	"math/rand"
+	"runtime"
 	"slices"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -17,7 +19,7 @@ import (
 	"github.com/myzhan/boomer"
 )
 
-const Name = "limitOrderManyTxTC"
+const Name = "limitOrderLPTxTC"
 
 var (
 	endPoint string
@@ -89,13 +91,12 @@ func provideInitialLiquidity(cli *ethclient.Client) {
 	var (
 		askLiquidityPrice = scaleUp(3)
 		bidLiquidityPrice = scaleUp(2)
-		initialQuantity   = scaleUp(1e4)
-		splitCount        = int(1e4) // How many orders should LP make for each liquidity provision
-		from              = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
+		initialQuantity   = scaleUp(1e6)
+		splitCount        = int(1e6) // How many orders should LP make for each liquidity provision
 	)
 
-	provideLiquidity(cli, from, orderbook.SELL, askLiquidityPrice, initialQuantity, splitCount)
-	provideLiquidity(cli, from, orderbook.BUY, bidLiquidityPrice, initialQuantity, splitCount)
+	provideLiquidity(cli, orderbook.SELL, askLiquidityPrice, initialQuantity, splitCount)
+	provideLiquidity(cli, orderbook.BUY, bidLiquidityPrice, initialQuantity, splitCount)
 }
 
 // lp watches order status, and provides liquidity when liquidity is needed.
@@ -104,17 +105,13 @@ func liquidityProvider(cli *ethclient.Client) {
 	var (
 		askLiquidityPrice = scaleUp(3)
 		bidLiquidityPrice = scaleUp(2)
-		minQuantity       = scaleUp(250)
+		minQuantity       = scaleUp(500)
 		pollInterval      = 2 * time.Second // LP checks and fills liquidity every pollInterval
-		splitCount        = 250             // How many orders should LP make for each liquidity provision
+		splitCount        = 500             // How many orders should LP make for each liquidity provision
 		fillDeficitOnly   = false           // If true, LP checks deficit from orderbook status. If false, minQuantity is filled.
 	)
 
 	for {
-		var (
-			from = accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
-		)
-
 		askDeficit, bidDeficit := minQuantity, minQuantity
 		if fillDeficitOnly {
 			deficits := checkLiquidityDeficit(cli, askLiquidityPrice, bidLiquidityPrice, minQuantity)
@@ -122,11 +119,11 @@ func liquidityProvider(cli *ethclient.Client) {
 		}
 
 		if askDeficit.Sign() > 0 {
-			provideLiquidity(cli, from, orderbook.SELL, askLiquidityPrice, askDeficit, splitCount)
+			provideLiquidity(cli, orderbook.SELL, askLiquidityPrice, askDeficit, splitCount)
 			log.Printf("Sent ask side LP order: price=%s, quantity=%s", askLiquidityPrice.String(), askDeficit.String())
 		}
 		if bidDeficit.Sign() > 0 {
-			provideLiquidity(cli, from, orderbook.BUY, bidLiquidityPrice, bidDeficit, splitCount)
+			provideLiquidity(cli, orderbook.BUY, bidLiquidityPrice, bidDeficit, splitCount)
 			log.Printf("Sent bid side LP order: price=%s, quantity=%s", bidLiquidityPrice.String(), bidDeficit.String())
 		}
 
@@ -134,18 +131,60 @@ func liquidityProvider(cli *ethclient.Client) {
 	}
 }
 
-func provideLiquidity(cli *ethclient.Client, from *account.Account, side orderbook.Side, price *big.Int, quantity *big.Int, splitCount int) {
+type OrderJob struct {
+	side     orderbook.Side
+	price    *big.Int
+	quantity *big.Int
+}
+
+func provideLiquidity(cli *ethclient.Client, side orderbook.Side, price *big.Int, quantity *big.Int, splitCount int) {
+	numWorkers := max(runtime.NumCPU(), 100)
+
+	jobs := make(chan OrderJob, splitCount)
+	var wg sync.WaitGroup
+
+	// Start workers
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go lpWorker(jobs, &wg)
+	}
+
+	// Send jobs
 	q := new(big.Int).Div(quantity, big.NewInt(int64(splitCount)))
 	for i := 0; i < splitCount; i++ {
-		tx, err := from.GenNewOrderTx(baseToken, quoteToken, side, price, q, orderbook.LIMIT)
+		jobs <- OrderJob{
+			side:     side,
+			price:    new(big.Int).Set(price), // Create copy to avoid race conditions
+			quantity: new(big.Int).Set(q),     // Create copy to avoid race conditions
+		}
+	}
+	close(jobs)
+
+	// Wait for all workers to finish
+	wg.Wait()
+}
+
+func lpWorker(jobs <-chan OrderJob, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// Each worker gets its own client and account
+	cli := cliPool.Alloc().(*ethclient.Client)
+	defer cliPool.Free(cli)
+
+	for job := range jobs {
+		from := accGrp[atomic.AddUint32(&cursor, 1)%uint32(nAcc)]
+
+		tx, err := from.GenNewOrderTx(baseToken, quoteToken, job.side, job.price, job.quantity, orderbook.LIMIT)
 		if err != nil {
 			log.Printf("Failed to generate LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-				err, from.GetAddress().Hex(), baseToken, quoteToken, side, price.String(), q.String(), orderbook.LIMIT)
+				err, from.GetAddress().Hex(), baseToken, quoteToken, job.side, job.price.String(), job.quantity.String(), orderbook.LIMIT)
+			continue
 		}
+
 		_, err = from.SendTx(cli, tx)
 		if err != nil {
 			log.Printf("Failed to send LP tx: error=%v, from=%s, baseToken=%s, quoteToken=%s, side=%d, price=%s, quantity=%s, orderType=%d",
-				err, from.GetAddress().Hex(), baseToken, quoteToken, side, price.String(), q.String(), orderbook.LIMIT)
+				err, from.GetAddress().Hex(), baseToken, quoteToken, job.side, job.price.String(), job.quantity.String(), orderbook.LIMIT)
 		}
 	}
 }

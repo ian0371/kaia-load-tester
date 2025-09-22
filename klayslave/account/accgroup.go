@@ -93,22 +93,13 @@ func (a *AccGroup) CreateAccountsPerAccGrp(nUserForSignedTx int, nUserForUnsigne
 		} else {
 			defer f.Close()
 
-			type AccountJSON struct {
-				Address    string `json:"address"`
-				PrivateKey string `json:"privateKey"`
-			}
-			type AccGroupJSON struct {
-				Accounts []AccountJSON
-			}
-			var accounts AccGroupJSON
+			var accounts AccGroup
 			if err := json.NewDecoder(f).Decode(&accounts); err != nil {
 				log.Printf("Failed to decode accounts from %s: %v", files[0], err)
-			} else {
-				// Reuse existing accounts
-				a.accLists = make([][]*Account, len(accounts.Accounts))
-				for i, account := range accounts.Accounts {
-					a.accLists[i] = []*Account{GetAccountFromKey(i, account.PrivateKey)}
-				}
+			} else if len(a.accLists) <= nUserForSignedTx+nUserForUnsignedTx+nUserForNewAccounts+nUserForGaslessRevertTx+nUserForGaslessApproveTx {
+				a.containsUnsignedAccGrp = accounts.containsUnsignedAccGrp
+				a.accLists = accounts.accLists
+				a.contracts = accounts.contracts
 				log.Printf("Loaded existing accounts from %s", files[0])
 				return
 			}

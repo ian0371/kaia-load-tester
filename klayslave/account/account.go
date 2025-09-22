@@ -482,7 +482,7 @@ func (acc *Account) GenSessionCreateTx() (*types.Transaction, error) {
 	tx := types.NewTransaction(
 		sessionCtx.Session.Nonce,
 		types.DexAddress,
-		big.NewInt(1e6),
+		common.Big0,
 		0,
 		common.Big0,
 		input,
@@ -515,7 +515,7 @@ func (acc *Account) GenSessionDeleteTx(i int) (*types.Transaction, error) {
 	tx := types.NewTransaction(
 		sessionCtx.Session.Nonce,
 		types.DexAddress,
-		big.NewInt(1e6),
+		common.Big0,
 		0,
 		common.Big0,
 		input,
@@ -544,7 +544,7 @@ func (acc *Account) GenTransferTx(to *Account, value *big.Int) (*types.Transacti
 	tx := types.NewTransaction(
 		acc.timenonce,
 		types.DexAddress,
-		big.NewInt(1e6),
+		common.Big0,
 		0,
 		common.Big0,
 		input,
@@ -578,7 +578,7 @@ func (acc *Account) GenTokenTransferTx(to *Account, value *big.Int, token string
 	tx := types.NewTransaction(
 		acc.timenonce,
 		types.DexAddress,
-		big.NewInt(1e6),
+		common.Big0,
 		0,
 		common.Big0,
 		input,
@@ -608,7 +608,7 @@ func (acc *Account) GenNewOrderTx(baseToken string, quoteToken string, side orde
 	tx := types.NewTransaction(
 		acc.timenonce,
 		types.DexAddress,
-		big.NewInt(1e6),
+		common.Big0,
 		0,
 		common.Big0,
 		input,
@@ -638,7 +638,7 @@ func (acc *Account) GenNewOrderTxWithTpsl(baseToken string, quoteToken string, s
 	tx := types.NewTransaction(
 		acc.timenonce,
 		types.DexAddress,
-		big.NewInt(1e6),
+		common.Big0,
 		0,
 		common.Big0,
 		input,
@@ -668,7 +668,7 @@ func (acc *Account) GenNewStopOrderTx(baseToken string, quoteToken string, side 
 	tx := types.NewTransaction(
 		acc.timenonce,
 		types.DexAddress,
-		big.NewInt(1e6),
+		common.Big0,
 		0,
 		common.Big0,
 		input,
@@ -698,7 +698,7 @@ func (acc *Account) GenCancelAllTx() (*types.Transaction, error) {
 	tx := types.NewTransaction(
 		acc.timenonce,
 		types.DexAddress,
-		big.NewInt(1e6),
+		common.Big0,
 		0,
 		common.Big0,
 		input,

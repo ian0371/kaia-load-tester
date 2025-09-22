@@ -30,8 +30,8 @@ var (
 	cursor uint32
 
 	// User settings
-	baseToken  = "2"
-	quoteToken = "3"
+	baseToken  = "3"
+	quoteToken = "2" // USDT
 	orderType  = orderbook.LIMIT
 )
 

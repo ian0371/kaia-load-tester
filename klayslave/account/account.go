@@ -400,6 +400,9 @@ func (acc *Account) TransferTokenSignedTxWithGuaranteeRetry(c *ethclient.Client,
 		if err != nil {
 			log.Printf("Failed to send token transfer tx: err=%v, from=%v, to=%v, timenonce=%v, value=%v, token=%v",
 				err.Error(), acc.GetAddress().String(), to.GetAddress().String(), acc.timenonce, value.String(), token)
+			if strings.Contains(err.Error(), "insufficient") {
+				os.Exit(1)
+			}
 			continue
 		}
 		receipt, err := c.TransactionReceipt(context.Background(), tx.Hash())

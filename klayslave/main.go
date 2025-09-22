@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -51,10 +52,12 @@ type RichAccount struct {
 func extractTargetTokensFromRichAccount(richAccount *types.StateAccount) []string {
 	var targetTokens []string
 	for token, bal := range richAccount.Balances.Available {
-		if bal.Cmp(new(uint256.Int).Mul(uint256.NewInt(1e8), uint256.NewInt(1e18))) > 0 {
+		if bal.Cmp(new(uint256.Int).Mul(uint256.NewInt(1e9), uint256.NewInt(1e18))) > 0 {
 			targetTokens = append(targetTokens, token)
 		}
 	}
+
+	slices.Sort(targetTokens)
 
 	return targetTokens
 }

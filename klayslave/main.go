@@ -129,26 +129,10 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 
 	// 2. charge local reservoir
 	_ = globalReservoirAccount.GetNonce(cfg.GetGCli())
-	revertGroupChargeValue := new(big.Int).Mul(cfg.GetChargeValue(), big.NewInt(int64(len(accGrp.GetAccListByName(account.AccListForGaslessRevertTx)))))
-	approveGroupChargeValue := new(big.Int).Mul(cfg.GetChargeValue(), big.NewInt(int64(len(accGrp.GetAccListByName(account.AccListForGaslessApproveTx)))))
-
-	richAccount, err := cfg.GetGCli().AccountAt(context.Background(), globalReservoirAccount.GetAddress(), nil)
-	if err != nil {
-		log.Fatalf("accountAt(%s) failed, err:%v", globalReservoirAccount.GetAddress().String(), err.Error())
-	}
-
-	var targetTokens []string
-	if cfg.InTheTcList("ethLegacyTxTC") {
-		targetTokens = []string{}
-	} else {
-		// Extract target tokens dynamically from richAccount balances
-		targetTokens = extractTargetTokensFromRichAccount(richAccount)
-		log.Printf("Dynamically extracted target tokens: %v", targetTokens)
-	}
 
 	// 3. charge KAIA
 	if cfg.InTheTcList("transferTxTC") || cfg.InTheTcList("ethLegacyTxTC") {
-		tx := globalReservoirAccount.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Add(cfg.GetTotalChargeValue(), new(big.Int).Add(revertGroupChargeValue, approveGroupChargeValue)))
+		tx := globalReservoirAccount.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, cfg.GetChargeValue())
 		receipt, err := bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
 		if err != nil {
 			log.Fatalf("receipt failed, err:%v", err.Error())
@@ -159,14 +143,21 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 
 		log.Printf("Start charging KLAY to test accounts because transferTxTC and/or ethLegacyTxTC is enabled")
 		accs := accGrp.GetValidAccGrp()
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
 		gasFee := big.NewInt(25e9 * 21000)
 		account.HierarchicalDistribute(accs, localReservoirAccount, cfg.GetChargeValue(), gasFee, func(from, to *account.Account, value *big.Int) {
 			from.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value)
 		})
 		log.Printf("Finished charging KLAY to %d test account(s)\n", len(accs))
 	} else {
+		richAccount, err := cfg.GetGCli().AccountAt(context.Background(), globalReservoirAccount.GetAddress(), nil)
+		if err != nil {
+			log.Fatalf("accountAt(%s) failed, err:%v", globalReservoirAccount.GetAddress().String(), err.Error())
+		}
+
+		// Extract target tokens dynamically from richAccount balances
+		targetTokens := extractTargetTokensFromRichAccount(richAccount)
+		log.Printf("Dynamically extracted target tokens: %v", targetTokens)
+
 		// top up tokens to local reservoir
 		for _, token := range targetTokens {
 			tx := globalReservoirAccount.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e18)), token)
@@ -181,10 +172,8 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 
 		log.Printf("Start charging Tokens [%s] to test accounts", strings.Join(targetTokens, ","))
 		accs := accGrp.GetValidAccGrp()
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
-		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessApproveTx)...) // for avoid validation
 		for _, token := range targetTokens {
-			value := new(big.Int).Mul(big.NewInt(1e10), big.NewInt(1e18))
+			value := new(big.Int).Mul(big.NewInt(1e7), big.NewInt(1e18))
 			gasFee := big.NewInt(25e9 * 21000)
 			account.HierarchicalDistribute(accs, localReservoirAccount, value, gasFee, func(from, to *account.Account, value *big.Int) {
 				from.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value, token)

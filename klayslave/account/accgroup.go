@@ -1,8 +1,12 @@
 package account
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
+	"os"
+	"time"
 )
 
 // AccList defines the enum for accList
@@ -76,6 +80,14 @@ func (a *AccGroup) CreateAccountsPerAccGrp(nUserForSignedTx int, nUserForUnsigne
 			fmt.Printf("%v\n", account.address.String())
 		}
 	}
+
+	fn := fmt.Sprintf("accounts-%s.json", time.Now().Format("20060102_150405"))
+	f, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("Failed to open file: %v", err)
+	}
+	defer f.Close()
+	json.NewEncoder(f).Encode(a.accLists)
 
 	// Unlock AccGrpForUnsignedTx if needed
 	for _, tcName := range tcStrList {

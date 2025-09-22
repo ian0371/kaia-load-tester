@@ -6,6 +6,8 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"path/filepath"
+	"sort"
 	"time"
 )
 
@@ -72,6 +74,32 @@ func (a *AccGroup) AddAccToListByName(acc *Account, t AccList) {
 }
 
 func (a *AccGroup) CreateAccountsPerAccGrp(nUserForSignedTx int, nUserForUnsignedTx int, nUserForNewAccounts int, nUserForGaslessRevertTx int, nUserForGaslessApproveTx int, tcStrList []string, gEndpoint string) {
+	// Try to load existing accounts from most recent accounts json file
+	files, err := filepath.Glob("accounts-*.json")
+	if err != nil {
+		log.Printf("Failed to glob account files: %v", err)
+	} else if len(files) > 0 {
+		// Sort files by name descending to get most recent
+		sort.Sort(sort.Reverse(sort.StringSlice(files)))
+
+		f, err := os.Open(files[0])
+		if err != nil {
+			log.Printf("Failed to open account file %s: %v", files[0], err)
+		} else {
+			defer f.Close()
+
+			var accounts [][]*Account
+			if err := json.NewDecoder(f).Decode(&accounts); err != nil {
+				log.Printf("Failed to decode accounts from %s: %v", files[0], err)
+			} else {
+				// Reuse existing accounts
+				a.accLists = accounts
+				log.Printf("Loaded existing accounts from %s", files[0])
+				return
+			}
+		}
+	}
+
 	for idx, nUser := range []int{nUserForSignedTx, nUserForUnsignedTx, nUserForNewAccounts, nUserForGaslessRevertTx, nUserForGaslessApproveTx} {
 		println(idx, " Account Group Preparation...")
 		for i := 0; i < nUser; i++ {

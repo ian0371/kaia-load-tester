@@ -14,12 +14,50 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/holiman/uint256"
 	"github.com/kaiachain/kaia-load-tester/klayslave/account"
 	"github.com/kaiachain/kaia-load-tester/klayslave/config"
 	"github.com/kaiachain/kaia-load-tester/testcase"
 	"github.com/myzhan/boomer"
 	"github.com/urfave/cli"
 )
+
+// TokenBalance represents a token balance entry
+type TokenBalance struct {
+	Token  string `json:"token"`
+	Amount string `json:"amount"`
+}
+
+// Balances represents the balances structure
+type Balances struct {
+	Available []TokenBalance `json:"available"`
+	Locked    []TokenBalance `json:"locked"`
+}
+
+// RichAccount represents the account structure returned by AccountAt
+type RichAccount struct {
+	Nonce         uint64   `json:"Nonce"`
+	Balance       string   `json:"Balance"`
+	LockedBalance string   `json:"LockedBalance"`
+	Balances      Balances `json:"Balances"`
+	Root          string   `json:"Root"`
+	CodeHash      string   `json:"CodeHash"`
+	Sessions      []string `json:"Sessions"`
+	TimeNonce     []uint64 `json:"TimeNonce"`
+}
+
+// extractTargetTokensFromRichAccount extracts available token IDs from richAccount
+func extractTargetTokensFromRichAccount(richAccount *types.StateAccount) []string {
+	var targetTokens []string
+	for token, bal := range richAccount.Balances.Available {
+		if bal.Cmp(new(uint256.Int).Mul(uint256.NewInt(1e8), uint256.NewInt(1e18))) > 0 {
+			targetTokens = append(targetTokens, token)
+		}
+	}
+
+	return targetTokens
+}
 
 var app = cli.NewApp()
 
@@ -93,24 +131,32 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 	_ = globalReservoirAccount.GetNonce(cfg.GetGCli())
 	revertGroupChargeValue := new(big.Int).Mul(cfg.GetChargeValue(), big.NewInt(int64(len(accGrp.GetAccListByName(account.AccListForGaslessRevertTx)))))
 	approveGroupChargeValue := new(big.Int).Mul(cfg.GetChargeValue(), big.NewInt(int64(len(accGrp.GetAccListByName(account.AccListForGaslessApproveTx)))))
-	tx := globalReservoirAccount.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Add(cfg.GetTotalChargeValue(), new(big.Int).Add(revertGroupChargeValue, approveGroupChargeValue)))
-	receipt, err := bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
+
+	richAccount, err := cfg.GetGCli().AccountAt(context.Background(), globalReservoirAccount.GetAddress(), nil)
 	if err != nil {
-		log.Fatalf("receipt failed, err:%v", err.Error())
-	}
-	if receipt.Status != 1 {
-		log.Fatalf("transfer for reservoir failed, localReservoir")
+		log.Fatalf("accountAt(%s) failed, err:%v", globalReservoirAccount.GetAddress().String(), err.Error())
 	}
 
-	targetTokens := []string{"2", "3"}
+	var targetTokens []string
 	if cfg.InTheTcList("ethLegacyTxTC") {
 		targetTokens = []string{}
-	} else if cfg.InTheTcList("tokenTransferTxTC") {
-		targetTokens = []string{"2", "3", "4", "5", "6", "7", "8", "9", "10"}
+	} else {
+		// Extract target tokens dynamically from richAccount balances
+		targetTokens = extractTargetTokensFromRichAccount(richAccount)
+		log.Printf("Dynamically extracted target tokens: %v", targetTokens)
 	}
 
 	// 3. charge KAIA
 	if cfg.InTheTcList("transferTxTC") || cfg.InTheTcList("ethLegacyTxTC") {
+		tx := globalReservoirAccount.TransferSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Add(cfg.GetTotalChargeValue(), new(big.Int).Add(revertGroupChargeValue, approveGroupChargeValue)))
+		receipt, err := bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
+		if err != nil {
+			log.Fatalf("receipt failed, err:%v", err.Error())
+		}
+		if receipt.Status != 1 {
+			log.Fatalf("transfer for reservoir failed, localReservoir")
+		}
+
 		log.Printf("Start charging KLAY to test accounts because transferTxTC and/or ethLegacyTxTC is enabled")
 		accs := accGrp.GetValidAccGrp()
 		accs = append(accs, accGrp.GetAccListByName(account.AccListForGaslessRevertTx)...)  // for avoid validation
@@ -123,8 +169,8 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 	} else {
 		// top up tokens to local reservoir
 		for _, token := range targetTokens {
-			tx = globalReservoirAccount.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e18)), token)
-			receipt, err = bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
+			tx := globalReservoirAccount.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e18)), token)
+			receipt, err := bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
 			if err != nil {
 				log.Fatalf("receipt failed, err:%v", err.Error())
 			}

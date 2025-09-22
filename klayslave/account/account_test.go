@@ -1,6 +1,7 @@
 package account
 
 import (
+	"encoding/json"
 	"math"
 	"math/big"
 	"sync"
@@ -41,5 +42,40 @@ func TestHierarchicalDistributeTransfer(t *testing.T) {
 
 	for i, acc := range accs {
 		assert.Equal(t, value.Uint64(), balanceMap[acc.GetAddress()], "balance of account[%d] is %d", i, balanceMap[acc.GetAddress()])
+	}
+}
+
+func TestMarshalJson(t *testing.T) {
+	var (
+		accs = AccGroup{
+			accLists: make([][]*Account, 0),
+		}
+		newAccs AccGroup
+	)
+
+	accs.accLists = append(accs.accLists, []*Account{NewAccount(0), NewAccount(1)})
+	accs.accLists = append(accs.accLists, []*Account{NewAccount(2)})
+	accs.accLists = append(accs.accLists, []*Account{NewAccount(3), NewAccount(4), NewAccount(5)})
+
+	jsonData, err := json.Marshal(accs)
+	if err != nil {
+		t.Fatalf("Failed to marshal accounts: %v", err)
+	}
+	t.Log(string(jsonData))
+
+	err = json.Unmarshal(jsonData, &newAccs)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal accounts: %v", err)
+	}
+	assert.Equal(t, 3, len(newAccs.accLists))
+	assert.Equal(t, 2, len(newAccs.accLists[0]))
+	assert.Equal(t, 1, len(newAccs.accLists[1]))
+	assert.Equal(t, 3, len(newAccs.accLists[2]))
+
+	for i, accList := range newAccs.accLists {
+		for j, acc := range accList {
+			assert.Equal(t, acc.GetAddress(), accs.accLists[i][j].GetAddress())
+			assert.Equal(t, acc.PrivateKey(), accs.accLists[i][j].PrivateKey())
+		}
 	}
 }

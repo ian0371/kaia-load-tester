@@ -8,7 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // AccList defines the enum for accList
@@ -88,12 +93,22 @@ func (a *AccGroup) CreateAccountsPerAccGrp(nUserForSignedTx int, nUserForUnsigne
 		} else {
 			defer f.Close()
 
-			var accounts [][]*Account
+			type AccountJSON struct {
+				Address    string `json:"address"`
+				PrivateKey string `json:"privateKey"`
+			}
+			type AccGroupJSON struct {
+				Accounts []AccountJSON
+			}
+			var accounts AccGroupJSON
 			if err := json.NewDecoder(f).Decode(&accounts); err != nil {
 				log.Printf("Failed to decode accounts from %s: %v", files[0], err)
 			} else {
 				// Reuse existing accounts
-				a.accLists = accounts
+				a.accLists = make([][]*Account, len(accounts.Accounts))
+				for i, account := range accounts.Accounts {
+					a.accLists[i] = []*Account{GetAccountFromKey(i, account.PrivateKey)}
+				}
 				log.Printf("Loaded existing accounts from %s", files[0])
 				return
 			}
@@ -115,7 +130,7 @@ func (a *AccGroup) CreateAccountsPerAccGrp(nUserForSignedTx int, nUserForUnsigne
 		log.Fatalf("Failed to open file: %v", err)
 	}
 	defer f.Close()
-	json.NewEncoder(f).Encode(a.accLists)
+	json.NewEncoder(f).Encode(a)
 
 	// Unlock AccGrpForUnsignedTx if needed
 	for _, tcName := range tcStrList {
@@ -155,4 +170,77 @@ func (a *AccGroup) GetValidAccGrp() []*Account {
 		accGrp = append(accGrp, acc)
 	}
 	return accGrp
+}
+
+type AccountJSON struct {
+	Address    string `json:"address"`
+	PrivateKey string `json:"privateKey"`
+	Nonce      uint64 `json:"nonce"`
+	TimeNonce  uint64 `json:"timeNonce"`
+}
+type AccGroupJSON struct {
+	ContainsUnsignedAccGrp bool `json:"containsUnsignedAccGrp"`
+	Accounts               [][]AccountJSON
+	Contracts              []AccountJSON
+}
+
+func (a AccGroup) MarshalJSON() ([]byte, error) {
+	ret := AccGroupJSON{
+		ContainsUnsignedAccGrp: a.containsUnsignedAccGrp,
+		Accounts:               make([][]AccountJSON, len(a.accLists)),
+		Contracts:              make([]AccountJSON, len(a.contracts)),
+	}
+	for i, accList := range a.accLists {
+		ret.Accounts[i] = make([]AccountJSON, len(accList))
+		for j, acc := range accList {
+			ret.Accounts[i][j] = AccountJSON{
+				Address:    acc.address.String(),
+				PrivateKey: hexutil.Encode(acc.privateKey.D.Bytes()),
+				Nonce:      acc.nonce,
+				TimeNonce:  acc.timenonce,
+			}
+		}
+	}
+	return json.Marshal(ret)
+}
+
+func (a *AccGroup) UnmarshalJSON(data []byte) error {
+	var src AccGroupJSON
+	if err := json.Unmarshal(data, &src); err != nil {
+		return err
+	}
+
+	a.containsUnsignedAccGrp = src.ContainsUnsignedAccGrp
+	a.contracts = make([]*Account, len(src.Contracts))
+	for i, acc := range src.Contracts {
+		// lstrip "0x" from acc.PrivateKe/y
+		acc.PrivateKey = strings.TrimPrefix(acc.PrivateKey, "0x")
+		pk, err := crypto.HexToECDSA(acc.PrivateKey)
+		if err != nil {
+			return err
+		}
+		a.contracts[i] = &Account{
+			address:    common.HexToAddress(acc.Address),
+			privateKey: pk,
+		}
+	}
+
+	a.accLists = make([][]*Account, len(src.Accounts))
+	for i := range src.Accounts {
+		a.accLists[i] = make([]*Account, len(src.Accounts[i]))
+		for j, acc := range src.Accounts[i] {
+			acc.PrivateKey = strings.TrimPrefix(acc.PrivateKey, "0x")
+			pk, err := crypto.HexToECDSA(acc.PrivateKey)
+			if err != nil {
+				return err
+			}
+			a.accLists[i][j] = &Account{
+				address:    common.HexToAddress(acc.Address),
+				privateKey: pk,
+				nonce:      acc.Nonce,
+				timenonce:  acc.TimeNonce,
+			}
+		}
+	}
+	return nil
 }

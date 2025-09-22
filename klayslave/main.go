@@ -155,12 +155,14 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 		}
 
 		// Extract target tokens dynamically from richAccount balances
-		targetTokens := extractTargetTokensFromRichAccount(richAccount)
+		targetTokens := extractTargetTokensFromRichAccount(richAccount)[:2]
 		log.Printf("Dynamically extracted target tokens: %v", targetTokens)
+		localReservoirValue := new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18))
+		leafAccountValue := new(big.Int).Mul(big.NewInt(1e6), big.NewInt(1e18))
 
 		// top up tokens to local reservoir
 		for _, token := range targetTokens {
-			tx := globalReservoirAccount.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e18)), token)
+			tx := globalReservoirAccount.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), localReservoirAccount, localReservoirValue, token)
 			receipt, err := bind.WaitMined(context.Background(), cfg.GetGCli(), tx)
 			if err != nil {
 				log.Fatalf("receipt failed, err:%v", err.Error())
@@ -173,9 +175,8 @@ func createTestAccGroupsAndPrepareContracts(cfg *config.Config, accGrp *account.
 		log.Printf("Start charging Tokens [%s] to test accounts", strings.Join(targetTokens, ","))
 		accs := accGrp.GetValidAccGrp()
 		for _, token := range targetTokens {
-			value := new(big.Int).Mul(big.NewInt(1e7), big.NewInt(1e18))
-			gasFee := big.NewInt(25e9 * 21000)
-			account.HierarchicalDistribute(accs, localReservoirAccount, value, gasFee, func(from, to *account.Account, value *big.Int) {
+			gasFee := big.NewInt(0)
+			account.HierarchicalDistribute(accs, localReservoirAccount, leafAccountValue, gasFee, func(from, to *account.Account, value *big.Int) {
 				from.TransferTokenSignedTxWithGuaranteeRetry(cfg.GetGCli(), to, value, token)
 			})
 			log.Printf("Finished charging Token \"%s\" to %d test account(s)\n", token, len(accs))

@@ -78,6 +78,12 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		txType    int
 	)
 
+	// TPSL order scenario implementation (probability in parenthesis):
+	// - tx1: TPSL order $3 BUY slTrigger=$2 slLimit=$1 (20%)
+	// - tx2: Limit order $3 SELL (20%)
+	// - tx3: limit order $2 BUY (20%)
+	// - tx4: limit order $2 SELL (20%)
+	// - tx5: limit order $1 BUY (20%)
 	switch txType = rand.Intn(5); txType {
 	case 0:
 		side = orderbook.BUY

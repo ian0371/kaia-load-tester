@@ -75,11 +75,11 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		txType    int
 	)
 
-	// Cancel order scenario implementation (probability in parenthesis):
-	// - tx1: provide liquidity ($2 BUY Q10)
-	// - tx2: provide liquidity ($3 SELL Q10)
-	// - tx3: take liquidity ($2 SELL Q1)
-	// - tx4: take liquidity ($3 BUY Q1)
+	// Limit order scenario implementation (probability in parenthesis):
+	// - tx1: provide liquidity ($2 BUY Q10, 10%)
+	// - tx2: provide liquidity ($3 SELL Q10, 10%)
+	// - tx3: take liquidity ($2 SELL Q1, 40%)
+	// - tx4: take liquidity ($3 BUY Q1, 40%)
 	randNum := rand.Intn(100)
 	switch {
 	case randNum < 10:

@@ -76,6 +76,11 @@ func SendRandomTx(cli *ethclient.Client, from *account.Account) error {
 		txType    int
 	)
 
+	// Stop order scenario implementation (probability in parenthesis):
+	// - tx1: Stop order $3 BUY stopPrice=$2 (25%)
+	// - tx2: Limit order $2 BUY (25%)
+	// - tx3: Limit order $2 SELL (25%)
+	// - tx4: Limit order $3 SELL (25%)
 	switch txType = rand.Intn(4); txType {
 	case 0:
 		side = orderbook.BUY

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eou pipefail
+
 if [ -z "$MASTER" ] || [ -z "$EN" ] || [ -z "$KEY" ]; then
     echo "Error: MASTER and EN and KEY environment variables must be set"
     exit 1
@@ -19,7 +21,25 @@ else
     base_sleep=0
 fi
 
-sudo ulimit -n 1048576
+TARGET=1048576
+if ulimit -n $TARGET 2>/dev/null; then
+    echo "Successfully set ulimit -n to $TARGET"
+else
+    echo "Failed to set ulimit -n to $TARGET"
+    SOFT=$(ulimit -Sn)
+    HARD=$(ulimit -Hn)
+    echo "Current limits:"
+    echo "  Soft limit: $SOFT"
+    echo "  Hard limit: $HARD"
+
+    if [ "$SOFT" -lt "$TARGET" ] || [ "$HARD" -lt "$TARGET" ]; then
+        echo ""
+        echo "Your current limits are too low. Please increase them using:"
+        echo "  echo \"$USER soft nofile 1048576\" | sudo tee -a /etc/security/limits.d/99-nofile.conf"
+        echo "  echo \"$USER hard nofile 1048576\" | sudo tee -a /etc/security/limits.d/99-nofile.conf"
+        echo "Then log out and log back in (or restart the service if using systemd)."
+    fi
+fi
 
 sudo sysctl -w net.ipv4.tcp_max_syn_backlog=65536
 sudo sysctl -w fs.file-max=2097152

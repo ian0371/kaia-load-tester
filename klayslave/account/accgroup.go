@@ -111,7 +111,6 @@ func (a *AccGroup) CreateAccountsPerAccGrp(nUserForSignedTx int, nUserForUnsigne
 		for i := 0; i < nUser; i++ {
 			account := NewAccount(i)
 			a.AddAccToListByName(account, AccList(idx))
-			fmt.Printf("%v\n", account.address.String())
 		}
 	}
 
@@ -184,14 +183,43 @@ func (a AccGroup) MarshalJSON() ([]byte, error) {
 	for i, accList := range a.accLists {
 		ret.Accounts[i] = make([]AccountJSON, len(accList))
 		for j, acc := range accList {
+			// Ensure private key is always 64 hex characters (32 bytes)
+			privateKeyBytes := acc.privateKey.D.Bytes()
+			if len(privateKeyBytes) < 32 {
+				// Pad with leading zeros if needed
+				paddedKey := make([]byte, 32)
+				copy(paddedKey[32-len(privateKeyBytes):], privateKeyBytes)
+				privateKeyBytes = paddedKey
+			}
 			ret.Accounts[i][j] = AccountJSON{
 				Address:    acc.address.String(),
-				PrivateKey: hexutil.Encode(acc.privateKey.D.Bytes()),
+				PrivateKey: hexutil.Encode(privateKeyBytes),
 				Nonce:      acc.nonce,
 				TimeNonce:  acc.timenonce,
 			}
 		}
 	}
+
+	// Handle contracts
+	for i, contract := range a.contracts {
+		if contract != nil {
+			// Ensure private key is always 64 hex characters (32 bytes)
+			privateKeyBytes := contract.privateKey.D.Bytes()
+			if len(privateKeyBytes) < 32 {
+				// Pad with leading zeros if needed
+				paddedKey := make([]byte, 32)
+				copy(paddedKey[32-len(privateKeyBytes):], privateKeyBytes)
+				privateKeyBytes = paddedKey
+			}
+			ret.Contracts[i] = AccountJSON{
+				Address:    contract.address.String(),
+				PrivateKey: hexutil.Encode(privateKeyBytes),
+				Nonce:      contract.nonce,
+				TimeNonce:  contract.timenonce,
+			}
+		}
+	}
+
 	return json.Marshal(ret)
 }
 

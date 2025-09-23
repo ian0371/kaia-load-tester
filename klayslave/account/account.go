@@ -77,6 +77,14 @@ func (acc *Account) UnLock() {
 }
 
 func GetAccountFromKey(id int, key string) *Account {
+	// Normalize the private key format
+	key = strings.TrimPrefix(key, "0x")
+
+	// Ensure the key is exactly 64 hex characters (32 bytes)
+	if len(key) != 64 {
+		log.Fatalf("Private key must be exactly 64 hex characters (32 bytes), got %d characters: %s\nExample of valid key: 2ef07640fd8d3f568c23185799ee92e0154bf08ccfe5c509466d1d40baca3430", len(key), key)
+	}
+
 	acc, err := crypto.HexToECDSA(key)
 	if err != nil {
 		log.Fatalf("Key(%v): Failed to HexToECDSA %v", key, err)

@@ -78,34 +78,95 @@ func (a *AccGroup) AddAccToListByName(acc *Account, t AccList) {
 	a.accLists[t] = append(a.accLists[t], acc)
 }
 
-func (a *AccGroup) CreateAccountsPerAccGrp(nUserForSignedTx int, nUserForUnsignedTx int, nUserForNewAccounts int, nUserForGaslessRevertTx int, nUserForGaslessApproveTx int, tcStrList []string, gEndpoint string) {
-	// Try to load existing accounts from most recent accounts json file
+// loadAccountsFromFile attempts to load accounts from the most recent accounts-*.json file
+// Returns true if accounts were successfully loaded, false otherwise
+func loadAccountsFromFile() (*AccGroup, error) {
 	files, err := filepath.Glob("accounts-*.json")
 	if err != nil {
-		log.Printf("Failed to glob account files: %v", err)
-	} else if len(files) > 0 {
-		// Sort files by name descending to get most recent
-		sort.Sort(sort.Reverse(sort.StringSlice(files)))
-
-		f, err := os.Open(files[0])
-		if err != nil {
-			log.Printf("Failed to open account file %s: %v", files[0], err)
-		} else {
-			defer f.Close()
-
-			var accounts AccGroup
-			if err := json.NewDecoder(f).Decode(&accounts); err != nil {
-				log.Printf("Failed to decode accounts from %s: %v", files[0], err)
-			} else if len(a.accLists) <= nUserForSignedTx+nUserForUnsignedTx+nUserForNewAccounts+nUserForGaslessRevertTx+nUserForGaslessApproveTx {
-				a.containsUnsignedAccGrp = accounts.containsUnsignedAccGrp
-				a.accLists = accounts.accLists
-				a.contracts = accounts.contracts
-				log.Printf("Loaded existing accounts from %s", files[0])
-				return
-			}
-		}
+		return nil, fmt.Errorf("failed to glob account files: %v", err)
 	}
 
+	if len(files) == 0 {
+		return nil, nil // No files found, not an error
+	}
+
+	// Sort files by name descending to get most recent
+	sort.Sort(sort.Reverse(sort.StringSlice(files)))
+
+	return loadAccountsFromSpecificFile(files[0])
+}
+
+func loadAccountsFromSpecificFile(filename string) (*AccGroup, error) {
+	accGroup := &AccGroup{
+		accLists:  make([][]*Account, AccListEnd),
+		contracts: make([]*Account, ContractEnd),
+	}
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open account file %s: %v", filename, err)
+	}
+	defer f.Close()
+
+	var accounts AccGroup
+	if err := json.NewDecoder(f).Decode(&accounts); err != nil {
+		return nil, fmt.Errorf("failed to decode accounts from %s: %v", filename, err)
+	}
+
+	accGroup.containsUnsignedAccGrp = accounts.containsUnsignedAccGrp
+	accGroup.accLists = accounts.accLists
+	accGroup.contracts = accounts.contracts
+
+	return accGroup, nil
+}
+
+// saveAccountsToFile saves the current accounts to a timestamped JSON file
+func (a *AccGroup) saveAccountsToFile() error {
+	filename := fmt.Sprintf("accounts-%s.json", time.Now().Format("20060102_150405"))
+	return a.saveAccountsToSpecificFile(filename)
+}
+
+// saveAccountsToSpecificFile saves the current accounts to a specific file
+func (a *AccGroup) saveAccountsToSpecificFile(filename string) error {
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %v", filename, err)
+	}
+	defer f.Close()
+
+	if err := json.NewEncoder(f).Encode(a); err != nil {
+		return fmt.Errorf("failed to encode accounts to %s: %v", filename, err)
+	}
+
+	log.Printf("Saved accounts to %s", filename)
+	return nil
+}
+
+// getTotalAccountCount returns the total number of accounts across all lists
+func (a *AccGroup) getTotalAccountCount() int {
+	total := 0
+	for _, accList := range a.accLists {
+		total += len(accList)
+	}
+	return total
+}
+
+func (a *AccGroup) CreateAccountsPerAccGrp(nUserForSignedTx int, nUserForUnsignedTx int, nUserForNewAccounts int, nUserForGaslessRevertTx int, nUserForGaslessApproveTx int, tcStrList []string, gEndpoint string) {
+	// Try to load existing accounts from file
+	loaded, err := loadAccountsFromFile()
+	if err != nil {
+		log.Printf("Error loading accounts from file: %v", err)
+	}
+
+	// Check if we have enough accounts loaded
+	totalNeeded := nUserForSignedTx + nUserForUnsignedTx + nUserForNewAccounts + nUserForGaslessRevertTx + nUserForGaslessApproveTx
+	if loaded != nil && loaded.getTotalAccountCount() >= totalNeeded {
+		a.containsUnsignedAccGrp = loaded.containsUnsignedAccGrp
+		a.accLists = loaded.accLists
+		a.contracts = loaded.contracts
+		return // We have enough accounts loaded from file
+	}
+
+	// Create new accounts if not loaded or not enough
 	for idx, nUser := range []int{nUserForSignedTx, nUserForUnsignedTx, nUserForNewAccounts, nUserForGaslessRevertTx, nUserForGaslessApproveTx} {
 		println(idx, " Account Group Preparation...")
 		for i := 0; i < nUser; i++ {
@@ -114,13 +175,10 @@ func (a *AccGroup) CreateAccountsPerAccGrp(nUserForSignedTx int, nUserForUnsigne
 		}
 	}
 
-	fn := fmt.Sprintf("accounts-%s.json", time.Now().Format("20060102_150405"))
-	f, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatalf("Failed to open file: %v", err)
+	// Save the newly created accounts
+	if err := a.saveAccountsToFile(); err != nil {
+		log.Fatalf("Failed to save accounts: %v", err)
 	}
-	defer f.Close()
-	json.NewEncoder(f).Encode(a)
 
 	// Unlock AccGrpForUnsignedTx if needed
 	for _, tcName := range tcStrList {
@@ -232,7 +290,13 @@ func (a *AccGroup) UnmarshalJSON(data []byte) error {
 	a.containsUnsignedAccGrp = src.ContainsUnsignedAccGrp
 	a.contracts = make([]*Account, len(src.Contracts))
 	for i, acc := range src.Contracts {
-		// lstrip "0x" from acc.PrivateKe/y
+		// Skip empty contracts (nil entries)
+		if acc.PrivateKey == "" || acc.Address == "" {
+			a.contracts[i] = nil
+			continue
+		}
+
+		// lstrip "0x" from acc.PrivateKey
 		acc.PrivateKey = strings.TrimPrefix(acc.PrivateKey, "0x")
 		pk, err := crypto.HexToECDSA(acc.PrivateKey)
 		if err != nil {

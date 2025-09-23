@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"math"
 	"math/big"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHierarchicalDistributeTransfer(t *testing.T) {
@@ -78,4 +81,48 @@ func TestMarshalJson(t *testing.T) {
 			assert.Equal(t, acc.PrivateKey(), accs.accLists[i][j].PrivateKey())
 		}
 	}
+}
+
+func Test_SaveLoad(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "account_test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	// Create test AccGroup with some accounts
+	accGroup := &AccGroup{
+		containsUnsignedAccGrp: true,
+		accLists:               make([][]*Account, AccListEnd),
+		contracts:              make([]*Account, ContractEnd),
+	}
+
+	// Add some test accounts
+	accGroup.accLists[AccListForSignedTx] = []*Account{NewAccount(0), NewAccount(1)}
+	accGroup.accLists[AccListForUnsignedTx] = []*Account{NewAccount(2)}
+
+	// Test saving to a specific file
+	filename := filepath.Join(tempDir, "test_accounts.json")
+	err = accGroup.saveAccountsToSpecificFile(filename)
+	require.NoError(t, err)
+
+	// Verify file exists
+	_, err = os.Stat(filename)
+	require.NoError(t, err)
+
+	// Verify file content by loading it back
+	loaded, err := loadAccountsFromSpecificFile(filename)
+	require.NoError(t, err)
+	assert.NotNil(t, loaded)
+
+	// Verify the loaded data matches original
+	assert.Equal(t, accGroup.containsUnsignedAccGrp, loaded.containsUnsignedAccGrp)
+	assert.Equal(t, len(accGroup.accLists[AccListForSignedTx]), len(loaded.accLists[AccListForSignedTx]))
+	assert.Equal(t, len(accGroup.accLists[AccListForUnsignedTx]), len(loaded.accLists[AccListForUnsignedTx]))
+}
+
+func TestLoadAccountsFromFile_NoFiles(t *testing.T) {
+	// Test loading when no files exist
+	loaded, err := loadAccountsFromSpecificFile("empty_file")
+	assert.Error(t, err)
+	assert.Nil(t, loaded)
 }
